@@ -25,6 +25,7 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mesa TEXT NOT NULL,
         cliente TEXT NOT NULL,
         plato_id INTEGER NOT NULL,
         fecha TEXT NOT NULL,
@@ -36,6 +37,7 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE platos (
         id INTEGER PRIMARY KEY, -- No es autoincrement porque viene del backend
+        mesa TEXT NOT NULL,
         nombre TEXT NOT NULL,
         precio REAL NOT NULL,
         ingrediente_principal TEXT

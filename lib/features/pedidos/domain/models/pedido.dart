@@ -3,6 +3,7 @@ enum EstadoPedido { pendiente, en_preparacion, rechazado, entregado }
 
 class Pedido {
   final int? id; // Puede ser null antes de guardarse en SQLite
+  final String mesa;
   final String cliente;
   final int platoId; // Relación con el ID del plato (FK)
   final DateTime fecha;
@@ -10,6 +11,7 @@ class Pedido {
 
   Pedido({
     this.id,
+    required this.mesa,
     required this.cliente,
     required this.platoId,
     DateTime? fecha,
