@@ -1,0 +1,33 @@
+name: CI - El Buen Sabor Mobile
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: ⬇️ Checkout del código
+      uses: actions/checkout@v3
+
+    - name: 🐦 Instalar Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.19.0' # O la versión que estés usando en pubspec.yaml
+        channel: 'stable'
+        cache: true
+
+    - name: 📦 Instalar dependencias
+      run: flutter pub get
+
+    - name: 🔍 Análisis Estático (Quality Gate)
+      # Esto detecta errores de código aunque no tengas tests
+      run: flutter analyze
+
+    - name: 📱 Verificar Compilación (Smoke Test)
+      # Si esto pasa, significa que la app "funciona" a nivel estructural
+      run: flutter build apk --debug --no-pub

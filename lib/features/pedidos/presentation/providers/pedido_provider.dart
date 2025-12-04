@@ -37,45 +37,50 @@ class PedidoProvider extends ChangeNotifier {
     }
   }
 
-  // 💾 CREAR PEDIDO (Actualizado)
- Future<bool> agregarPedido(String mesa, String cliente, int platoId) async {
-  if (mesa.isEmpty && cliente.isEmpty) {
-    _errorMessage = "Debe indicar mesa o cliente.";
+  // 💾 CREAR PEDIDO (Con actualización automática de Stock)
+  Future<bool> agregarPedido(String mesa, String cliente, int platoId) async {
+    if (mesa.isEmpty && cliente.isEmpty) {
+      _errorMessage = "Debe indicar mesa o cliente.";
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
     notifyListeners();
-    return false;
+
+    try {
+      final nuevoPedido = Pedido(
+        mesa: mesa,
+        cliente: cliente,
+        platoId: platoId,
+      );
+
+      // 1. Enviamos el pedido al Backend (Aquí descuenta stock en Mongo)
+      await _repository.insertPedido(nuevoPedido);
+
+      // 🔄 2. ACTUALIZACIÓN CRÍTICA: Recargamos TODO (Pedidos y Menú)
+      // Esto obliga a la app a bajar el stock nuevo (19) desde el servidor
+      final resultados = await Future.wait([
+        _repository.getMenu(),    // <--- ¡ESTO ES LO QUE FALTABA!
+        _repository.getPedidos(),
+      ]);
+
+      _menuPlatos = resultados[0] as List<Plato>; // Actualizamos lista del dropdown
+      _listaPedidos = resultados[1] as List<Pedido>; // Actualizamos lista histórica
+
+      notifyListeners(); // Avisamos a la UI para que repinte los números
+      return true;
+
+    } catch (e) {
+      _errorMessage = "No se pudo guardar: $e";
+      notifyListeners();
+      return false;
+
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
-
-  // ACTIVAMOS LOADING PERO SIN NOTIFICAR TODA LA UI
-  _isLoading = true;
-  notifyListeners(); // SOLO 1 vez aquí
-
-  try {
-    final nuevoPedido = Pedido(
-      mesa: mesa,
-      cliente: cliente,
-      platoId: platoId,
-    );
-
-    await _repository.insertPedido(nuevoPedido);
-
- // 🔄 Recargar lista desde backend
-    _listaPedidos = await _repository.getPedidos();
-
-    // AL FINAL INFORMAMOS A LA UI
-    notifyListeners();
-    return true;
-
-  } catch (e) {
-    _errorMessage = "No se pudo guardar: $e";
-    notifyListeners();
-    return false;
-
-  } finally {
-    // DESACTIVAMOS LOADING Y NOTIFICAMOS SOLO UNA VEZ
-    _isLoading = false;
-    notifyListeners();
-  }
-}
 
 
   // 🗑️ BORRAR PEDIDO
