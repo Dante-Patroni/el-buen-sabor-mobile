@@ -1,11 +1,11 @@
-// Mismo ENUM que en tu pedido.js
-enum EstadoPedido { pendiente, en_preparacion, rechazado, entregado }
+// ✅ LINTER HAPPY: Usamos camelCase para los valores del enum
+enum EstadoPedido { pendiente, enPreparacion, rechazado, entregado }
 
 class Pedido {
-  final int? id; // Puede ser null antes de guardarse en SQLite
+  final int? id; 
   final String mesa;
   final String cliente;
-  final int platoId; // Relación con el ID del plato (FK)
+  final int platoId;
   final DateTime fecha;
   final EstadoPedido estado;
 
@@ -15,6 +15,6 @@ class Pedido {
     required this.cliente,
     required this.platoId,
     DateTime? fecha,
-    this.estado = EstadoPedido.pendiente, // Default como en tu backend
-  }) : this.fecha = fecha ?? DateTime.now();
+    this.estado = EstadoPedido.pendiente,
+  }) : fecha = fecha ?? DateTime.now();
 }

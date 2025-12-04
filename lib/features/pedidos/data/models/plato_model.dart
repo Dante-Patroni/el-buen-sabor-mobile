@@ -2,26 +2,16 @@ import '../../domain/models/plato.dart';
 
 class PlatoModel extends Plato {
   PlatoModel({
-    required int id,
-    required String nombre,
-    required double precio,
-    required String ingredientePrincipal,
-    String? imagenUrl,
-    required StockInfo stock, // 1. Recibe el stock
-  }) : super(
-          id: id,
-          nombre: nombre,
-          precio: precio,
-          ingredientePrincipal: ingredientePrincipal,
-          imagenUrl: imagenUrl,
-          stock: stock, // 2. ⚠️ ¡IMPORTANTE! Se lo pasa al padre (Plato)
-        );
+    required super.id,
+    required super.nombre,
+    required super.precio,
+    required super.ingredientePrincipal,
+    super.imagenUrl,
+    required super.stock, // 1. Recibe el stock
+  });
 
   factory PlatoModel.fromMap(Map<String, dynamic> map) {
-    // TUS LOGS (Déjalos un momento más para verificar)
-    print("🔍 [DEBUG MODEL] Leyendo Plato ID: ${map['id']} - ${map['nombre']}");
-    print("   👉 stock_cantidad (raw): ${map['stock_cantidad']} (Tipo: ${map['stock_cantidad'].runtimeType})");
-    
+    // 2. Extrae el stock del mapa
     return PlatoModel(
       id: map['id'],
       nombre: map['nombre'],

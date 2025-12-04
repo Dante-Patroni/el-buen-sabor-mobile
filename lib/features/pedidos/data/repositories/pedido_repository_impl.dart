@@ -20,7 +20,6 @@ class PedidoRepositoryImpl implements PedidoRepository {
   // ===========================================================================
   @override
   Future<List<Plato>> getMenu() async {
-    print("🔄 [REPO] Buscando menú...");
 
     try {
       // ---------------------------------------------------------
@@ -30,8 +29,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
       final response = await http.get(url).timeout(const Duration(seconds: 5)); // Timeout corto
 
       if (response.statusCode == 200) {
-        print("✅ [REPO] Conexión API exitosa. Actualizando base local...");
-        
+      
         final List<dynamic> jsonList = jsonDecode(response.body);
         
         // Convertimos JSON -> Objetos Dart
@@ -42,7 +40,6 @@ class PedidoRepositoryImpl implements PedidoRepository {
 
         return platosOnline;
       } else {
-        print("⚠️ [REPO] Error API: ${response.statusCode}");
         throw Exception('Error servidor: ${response.statusCode}');
       }
 
@@ -50,7 +47,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
       // ---------------------------------------------------------
       // 2. FALLBACK OFFLINE (Local SQLite)
       // ---------------------------------------------------------
-      print("🔌 [REPO] Sin conexión o error ($e). Cargando datos locales...");
+
       return await _getLocalMenu();
     }
   }
@@ -62,7 +59,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
     final List<Map<String, dynamic>> maps = await db.query('platos');
 
     if (maps.isEmpty) {
-      print("📭 [REPO] Base de datos local vacía.");
+
       return [];
     }
 
@@ -89,7 +86,6 @@ class PedidoRepositoryImpl implements PedidoRepository {
         );
       }
     });
-    print("💾 [REPO] ${platos.length} platos guardados en SQLite.");
   }
 
   // ===========================================================================
@@ -138,7 +134,6 @@ class PedidoRepositoryImpl implements PedidoRepository {
         throw Exception('Error al cargar pedidos: ${response.statusCode}');
       }
     } catch (e) {
-      print("⚠️ Error obteniendo pedidos: $e");
       return []; // Retornamos vacío para no romper la UI
     }
   }

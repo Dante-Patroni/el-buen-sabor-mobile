@@ -2,31 +2,36 @@ import '../../domain/models/pedido.dart';
 
 class PedidoModel extends Pedido {
   PedidoModel({
-    required int id,
-    required String mesa,
-    required String cliente,
-    required int platoId,
-    required DateTime fecha,
-    required EstadoPedido estado,
-  }) : super(
-          id: id,
-          mesa: mesa,
-          cliente: cliente,
-          platoId: platoId,
-          fecha: fecha,
-          estado: estado,
-        );
+    super.id, // ✅ Dejamos que sea opcional (int?) como en el padre
+    required super.mesa,
+    required super.cliente,
+    required super.platoId,
+    required super.fecha,
+    required super.estado,
+  });
 
   factory PedidoModel.fromJson(Map<String, dynamic> json) {
     return PedidoModel(
-      id: json['id'],
-      mesa: json['mesa'].toString(),
-      cliente: json['cliente'] ?? "",
-      // 🛡️ BLINDAJE DE ID: Aceptamos 'platoId' (Flutter) O 'PlatoId' (Backend Sequelize)
-      platoId: json['platoId'] ?? json['PlatoId'] ?? 0, 
-      fecha: DateTime.tryParse(json['fecha'] ?? "") ?? DateTime.now(),
-      // 🛡️ MAPEO DE ESTADO: Convertimos String -> Enum
+      id: json['id'], // Puede ser null
+      mesa: (json['mesa'] ?? '').toString(),
+      cliente: (json['cliente'] ?? '').toString(),
+      // 🛡️ BLINDAJE DE ID
+      platoId: _parsePlatoId(json),
+      fecha: DateTime.tryParse(json['fecha']?.toString() ?? "") ?? DateTime.now(),
+      // 🛡️ MAPEO INTELEGENTE
       estado: _mapEstado(json['estado']),
+    );
+  }
+
+  // Para SQLite
+  factory PedidoModel.fromMap(Map<String, dynamic> map) {
+    return PedidoModel(
+      id: map['id'],
+      mesa: map['mesa'],
+      cliente: map['cliente'],
+      platoId: map['plato_id'],
+      fecha: DateTime.parse(map['fecha']),
+      estado: _mapEstado(map['estado']), // Reutilizamos el mapper inteligente
     );
   }
 
@@ -37,23 +42,37 @@ class PedidoModel extends Pedido {
       'cliente': cliente,
       'plato_id': platoId,
       'fecha': fecha.toIso8601String(),
-      'estado': estado.name, 
+      'estado': estado.name, // Guardará "enPreparacion" en SQLite
     };
   }
 
-  // 👇 EL MÉTODO QUE FALTABA (HELPER)
-  static EstadoPedido _mapEstado(String? estadoString) {
-    if (estadoString == null) return EstadoPedido.en_preparacion; // Default seguro
+  // 👇 HELPER DE ESTADO CORREGIDO
+  static EstadoPedido _mapEstado(dynamic estadoValue) {
+    if (estadoValue == null) return EstadoPedido.pendiente;
 
-    // Buscamos en el Enum el valor que coincida con el texto del backend
+    final String estadoString = estadoValue.toString().toLowerCase().trim();
+
+    // 1. Mapeo Manual para el caso conflictivo (snake_case vs camelCase)
+    if (estadoString == 'en_preparacion') return EstadoPedido.enPreparacion;
+    if (estadoString == 'enpreparacion') return EstadoPedido.enPreparacion;
+
+    // 2. Intentamos buscar coincidencias directas para el resto
     try {
       return EstadoPedido.values.firstWhere(
-        (e) => e.name.toLowerCase() == estadoString.toLowerCase(),
-        orElse: () => EstadoPedido.en_preparacion,
+        (e) => e.name.toLowerCase() == estadoString,
+        orElse: () => EstadoPedido.pendiente,
       );
     } catch (_) {
-      // Si falla todo, devolvemos un estado por defecto para no romper la app
-      return EstadoPedido.en_preparacion;
+      return EstadoPedido.pendiente;
     }
+  }
+
+  // 👇 HELPER DE ID (Que ya tenías bien)
+  static int _parsePlatoId(Map<String, dynamic> json) {
+    final val = json['platoId'] ?? json['PlatoId'] ?? json['plato_id'];
+    if (val == null) return 0;
+    if (val is int) return val;
+    if (val is String) return int.tryParse(val) ?? 0;
+    return 0;
   }
 }

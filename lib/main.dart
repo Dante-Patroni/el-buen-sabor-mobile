@@ -7,6 +7,7 @@
 /// 2. Configurar la Inyección de Dependencias (Dependency Injection).
 /// 3. Instanciar los Providers globales.
 /// 4. Definir el tema visual y la pantalla de inicio.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

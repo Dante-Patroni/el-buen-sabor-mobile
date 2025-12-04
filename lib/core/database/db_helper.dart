@@ -64,7 +64,5 @@ class DBHelper {
       (2, 'Hamburguesa Doble', 2000.0, 'Carne', NULL, 0, 0, 'AGOTADO'),
       (3, 'Ensalada Caesar', 1200.0, 'Pollo', NULL, 50, 1, 'DISPONIBLE')
     ''');
-
-    print("✅ Base de datos local (v4) creada y sembrada correctamente.");
   }
 }

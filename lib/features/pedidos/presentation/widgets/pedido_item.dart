@@ -26,7 +26,7 @@ class PedidoItem extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          "Mesa: ${pedido.mesa ?? "-"}   |   Cliente: ${pedido.cliente ?? "-"}",
+          "Mesa: ${pedido.mesa}   |   Cliente: ${pedido.cliente}",
         ),
         trailing: IconButton(
           icon: const Icon(Icons.delete, color: Colors.red),

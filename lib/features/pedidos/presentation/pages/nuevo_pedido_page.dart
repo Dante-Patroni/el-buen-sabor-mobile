@@ -63,7 +63,7 @@ class _NuevoPedidoPageState extends State<NuevoPedidoPage> {
 
             // 🔽 DROPDOWN MEJORADO (Precio + Stock)
             DropdownButtonFormField<int>(
-              value: _platoSeleccionado,
+              initialValue: _platoSeleccionado,
               decoration: const InputDecoration(labelText: "Plato"),
               items: provider.menuPlatos.map((p) {
                 
