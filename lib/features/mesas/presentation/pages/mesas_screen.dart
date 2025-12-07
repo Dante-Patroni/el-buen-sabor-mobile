@@ -43,7 +43,8 @@ class _MesasScreenState extends State<MesasScreen> {
               : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2, // 2 columnas
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
@@ -56,7 +57,7 @@ class _MesasScreenState extends State<MesasScreen> {
                         mesa: mesa,
                         onTap: () {
                           // Aquí iría la navegación al detalle (EBS-16)
-                          print("Tocaste ${mesa.nombre}");
+                          //debugPrint("Tocaste ${mesa.nombre}");
                         },
                       );
                     },
