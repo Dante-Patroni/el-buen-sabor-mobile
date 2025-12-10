@@ -2,7 +2,7 @@ import '../../domain/models/pedido.dart';
 
 class PedidoModel extends Pedido {
   PedidoModel({
-    super.id, // ✅ Dejamos que sea opcional (int?) como en el padre
+    super.id,
     required super.mesa,
     required super.cliente,
     required super.platoId,
@@ -10,53 +10,88 @@ class PedidoModel extends Pedido {
     required super.estado,
   });
 
-  factory PedidoModel.fromJson(Map<String, dynamic> json) {
+  // ==========================================================
+  // 1. ADAPTERS (Domino <-> Data)
+  // ==========================================================
+  
+  // 🔌 Mapper: Convierte Entidad (Dominio) -> Modelo (Data)
+  // Este es el puente que nos faltaba para el Repositorio
+  factory PedidoModel.fromEntity(Pedido pedido) {
     return PedidoModel(
-      id: json['id'], // Puede ser null
-      mesa: (json['mesa'] ?? '').toString(),
-      cliente: (json['cliente'] ?? '').toString(),
-      // 🛡️ BLINDAJE DE ID
-      platoId: _parsePlatoId(json),
-      fecha: DateTime.tryParse(json['fecha']?.toString() ?? "") ?? DateTime.now(),
-      // 🛡️ MAPEO INTELEGENTE
-      estado: _mapEstado(json['estado']),
+      id: pedido.id,
+      mesa: pedido.mesa,
+      cliente: pedido.cliente,
+      platoId: pedido.platoId,
+      fecha: pedido.fecha,
+      estado: pedido.estado,
     );
   }
 
-  // Para SQLite
+  // ==========================================================
+  // 2. PARSERS (Data <-> JSON/DB)
+  // ==========================================================
+
+  // 📥 API -> APP (fromJson)
+  factory PedidoModel.fromJson(Map<String, dynamic> json) {
+    return PedidoModel(
+      id: json['id'],
+      mesa: (json['mesa'] ?? '').toString(),
+      cliente: (json['cliente'] ?? '').toString(),
+      platoId: _parsePlatoId(json), // Tu blindaje funciona perfecto aquí
+      fecha: DateTime.tryParse(json['fecha']?.toString() ?? "") ?? DateTime.now(),
+      estado: _mapEstado(json['estado']), // Tu mapper inteligente
+    );
+  }
+
+  // 📤 APP -> API (toJson)
+  // Usamos esto para enviar al Backend (Node.js suele preferir camelCase)
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'mesa': mesa,
+      'cliente': cliente,
+      'platoId': platoId, // ⚠️ API suele usar camelCase
+      'fecha': fecha.toIso8601String(),
+      'estado': estado.name, // "pendiente", "enPreparacion"
+    };
+  }
+
+  // 📥 SQLite -> APP (fromMap)
   factory PedidoModel.fromMap(Map<String, dynamic> map) {
     return PedidoModel(
       id: map['id'],
       mesa: map['mesa'],
       cliente: map['cliente'],
-      platoId: map['plato_id'],
+      platoId: map['plato_id'], // SQLite suele usar snake_case
       fecha: DateTime.parse(map['fecha']),
-      estado: _mapEstado(map['estado']), // Reutilizamos el mapper inteligente
+      estado: _mapEstado(map['estado']),
     );
   }
 
+  // 📤 APP -> SQLite (toMap)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'mesa': mesa,
       'cliente': cliente,
-      'plato_id': platoId,
+      'plato_id': platoId, // SQLite snake_case
       'fecha': fecha.toIso8601String(),
-      'estado': estado.name, // Guardará "enPreparacion" en SQLite
+      'estado': estado.name,
     };
   }
 
-  // 👇 HELPER DE ESTADO CORREGIDO
+  // ==========================================================
+  // 3. HELPERS (Tus funciones de blindaje)
+  // ==========================================================
+
   static EstadoPedido _mapEstado(dynamic estadoValue) {
     if (estadoValue == null) return EstadoPedido.pendiente;
-
     final String estadoString = estadoValue.toString().toLowerCase().trim();
 
-    // 1. Mapeo Manual para el caso conflictivo (snake_case vs camelCase)
+    // Casos manuales
     if (estadoString == 'en_preparacion') return EstadoPedido.enPreparacion;
     if (estadoString == 'enpreparacion') return EstadoPedido.enPreparacion;
 
-    // 2. Intentamos buscar coincidencias directas para el resto
     try {
       return EstadoPedido.values.firstWhere(
         (e) => e.name.toLowerCase() == estadoString,
@@ -67,7 +102,6 @@ class PedidoModel extends Pedido {
     }
   }
 
-  // 👇 HELPER DE ID (Que ya tenías bien)
   static int _parsePlatoId(Map<String, dynamic> json) {
     final val = json['platoId'] ?? json['PlatoId'] ?? json['plato_id'];
     if (val == null) return 0;

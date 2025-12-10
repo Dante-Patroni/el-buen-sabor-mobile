@@ -1,9 +1,8 @@
-import 'package:el_buen_sabor_app/features/pedidos/presentation/widgets/empty_pedidos_widget.dart';
-import 'package:el_buen_sabor_app/features/pedidos/presentation/widgets/pedido_item.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pedido_provider.dart';
-
+import '../widgets/pedido_item.dart';
+import '../widgets/empty_pedidos_widget.dart';
 
 class PedidoList extends StatelessWidget {
   const PedidoList({super.key});
@@ -11,7 +10,8 @@ class PedidoList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<PedidoProvider>(context);
-    final pedidos = provider.listaPedidos;
+    // Nota: Aquí mostramos el historial del Backend, no el carrito actual
+    final pedidos = provider.listaPedidos; 
 
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -30,7 +30,8 @@ class PedidoList extends StatelessWidget {
         return PedidoItem(
           pedido: pedido,
           plato: plato,
-          onDelete: () => provider.borrarPedido(pedido.id!),
+          // 👇 AQUÍ ESTÁ EL CAMBIO: borrarPedidoHistorico
+          onDelete: () => provider.borrarPedidoHistorico(pedido.id!),
         );
       },
     );

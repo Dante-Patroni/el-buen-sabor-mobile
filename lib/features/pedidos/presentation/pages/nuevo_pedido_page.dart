@@ -1,7 +1,7 @@
-import 'package:el_buen_sabor_app/features/pedidos/presentation/pages/pedido_list.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pedido_provider.dart';
+import '../../domain/models/plato.dart';
 
 class NuevoPedidoPage extends StatefulWidget {
   const NuevoPedidoPage({super.key});
@@ -11,153 +11,144 @@ class NuevoPedidoPage extends StatefulWidget {
 }
 
 class _NuevoPedidoPageState extends State<NuevoPedidoPage> {
-  final _mesaController = TextEditingController();
   final _clienteController = TextEditingController();
-  int? _platoSeleccionado;
-  bool _inicializado = false;
+  int? _platoSeleccionadoId;
 
   @override
   void initState() {
     super.initState();
+    // Cargamos menú y pedidos viejos al entrar
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarInicial();
+      context.read<PedidoProvider>().inicializarDatos();
     });
-  }
-
-  Future<void> _cargarInicial() async {
-    final provider = context.read<PedidoProvider>();
-    await provider.inicializarDatos();
-
-    if (mounted) {
-      setState(() {
-        _inicializado = true;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Escuchamos al provider
     final provider = Provider.of<PedidoProvider>(context);
+    final carrito = provider.carrito;
 
-    // 🔄 Pantalla de carga inicial
-    if (!_inicializado) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     return Scaffold(
-      appBar: AppBar(title: const Text("Nuevo Pedido")),
+      appBar: AppBar(
+        title: Text("Mesa ${provider.mesaSeleccionada}"),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // --- FORMULARIO ---
-            TextField(
-              controller: _mesaController,
-              decoration: const InputDecoration(labelText: "Mesa"),
-            ),
+            // 1. NOMBRE DEL CLIENTE (Opcional)
             TextField(
               controller: _clienteController,
-              decoration: const InputDecoration(labelText: "Cliente"),
+              decoration: const InputDecoration(
+                labelText: "Cliente (Opcional)",
+                prefixIcon: Icon(Icons.person),
+              ),
+              onChanged: (val) => provider.setCliente(val),
             ),
-
-            const SizedBox(height: 12),
-
-            // 🔽 DROPDOWN MEJORADO (Precio + Stock)
-            DropdownButtonFormField<int>(
-              initialValue: _platoSeleccionado,
-              decoration: const InputDecoration(labelText: "Plato"),
-              items: provider.menuPlatos.map((p) {
-                
-                // 1. Cálculos de Seguridad
-                final bool hayStock = p.stock.esIlimitado || p.stock.cantidad > 0;
-                final bool esBajoStock = !p.stock.esIlimitado && p.stock.cantidad < 5 && hayStock;
-
-                // 2. Texto Informativo (Simple)
-                // Si es ilimitado, no mostramos nada. Si hay stock, mostramos cantidad.
-                final String infoStock = p.stock.esIlimitado 
-                    ? "" 
-                    : " (${p.stock.cantidad})"; 
-                
-                // 3. Etiqueta final
-                // Ej: "Milanesa - $1500 (20)" o "Milanesa - $1500 [AGOTADO]"
-                String etiqueta = "${p.nombre} - \$${p.precio.toStringAsFixed(0)}";
-                
-                if (!hayStock) {
-                  etiqueta += " [AGOTADO]";
-                } else {
-                  etiqueta += infoStock;
-                }
-
-                // 4. Color Simple (Rojo si es urgente/agotado, Negro si normal)
-                final Color colorTexto = (esBajoStock || !hayStock) ? Colors.red : Colors.black;
-
-                return DropdownMenuItem(
-                  value: p.id,
-                  enabled: hayStock, 
-                  // 🏁 UI SIMPLIFICADA AL MÁXIMO (Solo Texto)
-                  // Eliminamos Row, Icon y Flexible para evitar el crash gráfico
-                  child: Text(
-                    etiqueta,
-                    style: TextStyle(
-                      color: colorTexto,
-                      fontWeight: esBajoStock ? FontWeight.bold : FontWeight.normal,
-                      // Si está agotado, lo ponemos en cursiva y gris visualmente (aunque el texto sea rojo)
-                      fontStyle: !hayStock ? FontStyle.italic : FontStyle.normal,
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (v) {
-                // Doble chequeo por si acaso selecciona uno deshabilitado
-                final plato = provider.getPlatoById(v!);
-                if (plato != null &&
-                    (plato.stock.esIlimitado || plato.stock.cantidad > 0)) {
-                  setState(() => _platoSeleccionado = v);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("¡Producto Agotado!")),
-                  );
-                }
-              },
-            ),
-
             const SizedBox(height: 16),
 
-            ElevatedButton(
-              onPressed: provider.isLoading
-                  ? null
-                  : () async {
-                      if (_platoSeleccionado == null) return;
+            // 2. SELECTOR DE PLATOS (Dropdown)
+            DropdownButtonFormField<int>(
+              value: _platoSeleccionadoId,
+              decoration: const InputDecoration(
+                labelText: "Agregar Plato",
+                border: OutlineInputBorder(),
+              ),
+              items: provider.menuPlatos.map((plato) {
+                return DropdownMenuItem(
+                  value: plato.id,
+                  child: Text("${plato.nombre} - \$${plato.precio.toInt()}"),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() => _platoSeleccionadoId = val);
+              },
+            ),
+            const SizedBox(height: 10),
 
-                      final ok = await provider.agregarPedido(
-                        _mesaController.text,
-                        _clienteController.text,
-                        _platoSeleccionado!,
-                      );
-
-                      if (ok) {
-                        _mesaController.clear();
-                        _clienteController.clear();
-                        setState(() => _platoSeleccionado = null);
-                      }
-                    },
-              child: provider.isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text("Guardar Pedido"),
+            // 3. BOTÓN AGREGAR AL CARRITO
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _platoSeleccionadoId == null
+                    ? null
+                    : () {
+                        // Buscamos el objeto plato completo
+                        final plato = provider.getPlatoById(_platoSeleccionadoId!);
+                        if (plato != null) {
+                          // 👇 AQUÍ ESTÁ EL CAMBIO: Usamos agregarAlCarrito
+                          provider.agregarAlCarrito(plato);
+                          setState(() => _platoSeleccionadoId = null); // Reseteamos
+                        }
+                      },
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text("Agregar al Pedido"),
+              ),
             ),
 
-            const SizedBox(height: 24),
+            const Divider(thickness: 2, height: 32),
 
-            const Expanded(child: PedidoList()),
+            // 4. LISTA DEL CARRITO (Visualizamos lo que vamos a pedir)
+            Expanded(
+              child: carrito.isEmpty
+                  ? Center(
+                      child: Text(
+                        "El pedido está vacío",
+                        style: TextStyle(color: Colors.grey.shade500),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: carrito.length,
+                      itemBuilder: (context, index) {
+                        final item = carrito[index];
+                        return ListTile(
+                          leading: const Icon(Icons.fastfood, color: Colors.orange),
+                          title: Text(item.nombre),
+                          subtitle: Text("\$ ${item.precio.toInt()}"),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            // 👇 Eliminamos del borrador local
+                            onPressed: () => provider.quitarDelCarrito(index),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            // 5. BOTÓN CONFIRMAR (Enviar a Cocina)
+            if (carrito.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: provider.isLoading
+                      ? null
+                      : () async {
+                          // 👇 AQUÍ CONFIRMAMOS (EBS-16)
+                          final exito = await provider.confirmarPedido();
+                          if (exito && context.mounted) {
+                            Navigator.pop(context); // Volvemos a las mesas
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("¡Pedido enviado a cocina! 🍳")),
+                            );
+                          }
+                        },
+                  child: provider.isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          "CONFIRMAR PEDIDO (\$${provider.totalCarrito.toInt()})",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                ),
+              ),
           ],
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _mesaController.dispose();
-    _clienteController.dispose();
-    super.dispose();
   }
 }
