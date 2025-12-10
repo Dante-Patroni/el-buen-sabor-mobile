@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pedido_provider.dart';
-import '../../domain/models/plato.dart';
 
 class NuevoPedidoPage extends StatefulWidget {
   const NuevoPedidoPage({super.key});
@@ -50,7 +49,7 @@ class _NuevoPedidoPageState extends State<NuevoPedidoPage> {
 
             // 2. SELECTOR DE PLATOS (Dropdown)
             DropdownButtonFormField<int>(
-              value: _platoSeleccionadoId,
+              initialValue: _platoSeleccionadoId,
               decoration: const InputDecoration(
                 labelText: "Agregar Plato",
                 border: OutlineInputBorder(),
@@ -75,11 +74,13 @@ class _NuevoPedidoPageState extends State<NuevoPedidoPage> {
                     ? null
                     : () {
                         // Buscamos el objeto plato completo
-                        final plato = provider.getPlatoById(_platoSeleccionadoId!);
+                        final plato =
+                            provider.getPlatoById(_platoSeleccionadoId!);
                         if (plato != null) {
                           // 👇 AQUÍ ESTÁ EL CAMBIO: Usamos agregarAlCarrito
                           provider.agregarAlCarrito(plato);
-                          setState(() => _platoSeleccionadoId = null); // Reseteamos
+                          setState(
+                              () => _platoSeleccionadoId = null); // Reseteamos
                         }
                       },
                 icon: const Icon(Icons.add_shopping_cart),
@@ -103,7 +104,8 @@ class _NuevoPedidoPageState extends State<NuevoPedidoPage> {
                       itemBuilder: (context, index) {
                         final item = carrito[index];
                         return ListTile(
-                          leading: const Icon(Icons.fastfood, color: Colors.orange),
+                          leading:
+                              const Icon(Icons.fastfood, color: Colors.orange),
                           title: Text(item.nombre),
                           subtitle: Text("\$ ${item.precio.toInt()}"),
                           trailing: IconButton(
@@ -134,7 +136,9 @@ class _NuevoPedidoPageState extends State<NuevoPedidoPage> {
                           if (exito && context.mounted) {
                             Navigator.pop(context); // Volvemos a las mesas
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("¡Pedido enviado a cocina! 🍳")),
+                              const SnackBar(
+                                  content:
+                                      Text("¡Pedido enviado a cocina! 🍳")),
                             );
                           }
                         },
@@ -142,7 +146,8 @@ class _NuevoPedidoPageState extends State<NuevoPedidoPage> {
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(
                           "CONFIRMAR PEDIDO (\$${provider.totalCarrito.toInt()})",
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                 ),
               ),

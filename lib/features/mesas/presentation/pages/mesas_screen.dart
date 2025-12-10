@@ -9,7 +9,6 @@ import '../widgets/mesa_item.dart';
 // 👇 1. NUEVOS IMPORTS (Para conectar con Pedidos)
 import '../../../pedidos/presentation/providers/pedido_provider.dart';
 import '../../../pedidos/presentation/pages/nuevo_pedido_page.dart';
-import 'mesas_screen.dart'; // 👈 Importamos la nueva pantalla
 
 class MesasScreen extends StatefulWidget {
   const MesasScreen({super.key});
@@ -50,7 +49,8 @@ class _MesasScreenState extends State<MesasScreen> {
               : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
@@ -66,10 +66,12 @@ class _MesasScreenState extends State<MesasScreen> {
                           // 👇 2. LÓGICA DE NAVEGACIÓN INTELIGENTE
                           if (mesa.estado == 'libre') {
                             // A. Si está LIBRE -> Iniciamos Nuevo Pedido
-                            
+
                             // 1. Preparamos el provider (limpiamos carrito, seteamos mesa)
-                            context.read<PedidoProvider>().iniciarPedido(mesa.id.toString());
-                            
+                            context
+                                .read<PedidoProvider>()
+                                .iniciarPedido(mesa.id.toString());
+
                             // 2. Navegamos a la pantalla de carga
                             Navigator.push(
                               context,
@@ -80,7 +82,6 @@ class _MesasScreenState extends State<MesasScreen> {
                               // Cuando volvemos, recargamos las mesas por si se ocupó alguna
                               mesaProvider.cargarMesas();
                             });
-                          
                           } else {
                             // B. Si NO ESTÁ LIBRE -> Conectamos con mesa ocupada Navegamos a Detalle
                             Navigator.push(
