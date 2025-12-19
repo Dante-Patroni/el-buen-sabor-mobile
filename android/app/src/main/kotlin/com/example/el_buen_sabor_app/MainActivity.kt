@@ -1,4 +1,4 @@
-package com.elbuensabor.el_buen_sabor_app
+package com.example.el_buen_sabor_app
 
 import io.flutter.embedding.android.FlutterActivity
 
