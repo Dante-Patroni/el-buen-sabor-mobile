@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pedido_provider.dart';
-import '../../domain/models/plato.dart';
+
 
 class NuevoPedidoPage extends StatefulWidget {
   const NuevoPedidoPage({super.key});
@@ -100,19 +100,17 @@ class _NuevoPedidoPageState extends State<NuevoPedidoPage>
                           borderRadius: BorderRadius.circular(8),
                           color: Colors.grey[200],
                           image:
-                              plato.imagenPath != null &&
-                                  plato.imagenPath!.isNotEmpty &&
-                                  !plato.imagenPath!.contains("url-falsa")
+                              plato.imagenPath.isNotEmpty &&
+                                  !plato.imagenPath.contains("url-falsa")
                               ? DecorationImage(
-                                  image: NetworkImage(plato.imagenPath!),
+                                  image: NetworkImage(plato.imagenPath),
                                   fit: BoxFit.cover,
                                 )
                               : null,
                         ),
                         child:
-                            plato.imagenPath == null ||
-                                plato.imagenPath!.isEmpty ||
-                                plato.imagenPath!.contains("url-falsa")
+                            plato.imagenPath.isEmpty ||
+                                plato.imagenPath.contains("url-falsa")
                             ? const Icon(Icons.restaurant, color: Colors.grey)
                             : null,
                       ),

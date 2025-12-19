@@ -14,7 +14,7 @@ import 'features/mesas/presentation/providers/mesa_provider.dart';
 // 👇 NUEVOS IMPORTS DE AUTH
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/pages/login_page.dart';
-import 'features/pedidos/data/repositories/pedido_repository_impl.dart';
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +27,7 @@ class ElBuenSaborApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Instancia del Repositorio de Pedidos
-    final pedidoRepository = PedidoRepositoryImpl();
+    // Instancia del Repositorio de Pedidos
 
     return MultiProvider(
       providers: [

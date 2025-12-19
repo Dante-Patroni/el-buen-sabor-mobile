@@ -1,6 +1,7 @@
 //Este archivo se encarga de golpear la puerta del Backend (POST /login).
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class AuthRepository {
@@ -10,8 +11,8 @@ class AuthRepository {
     final url = Uri.parse('$_baseUrl/login');
 
     // 👇 1. Imprime a dónde estás pegando
-    print("🌐 Intentando Login en: $url");
-    print("📤 Enviando: legajo=$legajo, pass=$password");
+    debugPrint("🌐 Intentando Login en: $url");
+    debugPrint("📤 Enviando: legajo=$legajo, pass=$password");
 
     try {
       final response = await http.post(
@@ -21,8 +22,8 @@ class AuthRepository {
       );
 
       // 👇 2. EL CHIVATO: Imprime qué respondió el server ANTES de decodificar
-      print("📥 Status Code: ${response.statusCode}");
-      print("📦 Body recibido: ${response.body}");
+      debugPrint("📥 Status Code: ${response.statusCode}");
+      debugPrint("📦 Body recibido: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -38,7 +39,7 @@ class AuthRepository {
         }
       }
     } catch (e) {
-      print("❌ Error Fatal: $e"); // Para verlo en consola
+      debugPrint("❌ Error Fatal: $e"); // Para verlo en consola
       rethrow;
     }
   }

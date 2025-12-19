@@ -44,7 +44,7 @@ class Pedido {
       mesa: mesa ?? this.mesa,
       cliente: cliente ?? this.cliente,
       platoId: platoId ?? this.platoId,
-      fecha: this.fecha, // Mantenemos la fecha original
+      fecha: fecha, // Mantenemos la fecha original
       estado: estado ?? this.estado,
       total: total ?? this.total,
       cantidad: cantidad ?? this.cantidad,

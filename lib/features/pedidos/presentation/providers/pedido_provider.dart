@@ -42,8 +42,6 @@ class PedidoProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print("🔄 Cargando datos del servidor...");
-
       // A. Cargar el Menú (Platos)
       final menu = await pedidoRepository.getMenu();
       menuPlatos = menu;
@@ -51,12 +49,7 @@ class PedidoProvider extends ChangeNotifier {
       // B. Cargar el Historial de Pedidos (Para ver qué pidieron antes)
       final pedidosBackend = await pedidoRepository.getPedidos();
       listaPedidos = pedidosBackend;
-
-      print(
-        "✅ Datos cargados: ${menuPlatos.length} platos y ${listaPedidos.length} pedidos históricos.",
-      );
     } catch (e) {
-      print("❌ Error cargando datos: $e");
       _errorMessage = "No se pudo conectar con el servidor.";
     } finally {
       _isLoading = false;
@@ -73,7 +66,6 @@ class PedidoProvider extends ChangeNotifier {
     mesaSeleccionada = mesaId;
     carrito.clear(); // Limpiamos el carrito anterior por seguridad
     notifyListeners();
-    print("🚀 Iniciando sesión para la Mesa: $mesaId");
   }
 
   // Guarda el nombre para el ticket
@@ -92,13 +84,11 @@ class PedidoProvider extends ChangeNotifier {
 
     if (index != -1) {
       // CASO A: Ya existe -> Aumentamos la cantidad (+1)
-      print("➕ Aumentando cantidad de: ${plato.nombre}");
       carrito[index] = carrito[index].copyWith(
         cantidad: carrito[index].cantidad + 1,
       );
     } else {
       // CASO B: Es nuevo -> Creamos el Pedido
-      print("🆕 Agregando nuevo plato: ${plato.nombre}");
       final nuevoPedido = Pedido(
         mesa: mesaSeleccionada, // Usa la variable de estado
         cliente: clienteActual, // Usa la variable de estado
@@ -116,7 +106,6 @@ class PedidoProvider extends ChangeNotifier {
   void quitarDelCarrito(Pedido pedido) {
     carrito.removeWhere((p) => p.platoId == pedido.platoId);
     notifyListeners();
-    print("🗑️ Plato eliminado del carrito");
   }
 
   // ===============================================================
@@ -130,8 +119,6 @@ class PedidoProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print("📤 Enviando pedido de ${carrito.length} items...");
-
       // Enviamos la mesa y la lista completa al repositorio
       await pedidoRepository.insertPedido(mesaSeleccionada, carrito);
 
@@ -147,7 +134,6 @@ class PedidoProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      print("❌ Error al confirmar: $e");
       notifyListeners();
       return false;
     }
@@ -185,7 +171,6 @@ class PedidoProvider extends ChangeNotifier {
         },
       );
     } catch (e) {
-      print("🔥 ERROR CRÍTICO: $e");
       // Fallback de seguridad
       return Plato(
         id: 0,
@@ -204,8 +189,6 @@ class PedidoProvider extends ChangeNotifier {
   // Elimina un pedido confirmado de la base de datos y de la lista visual
   Future<void> borrarPedidoHistorico(int id) async {
     try {
-      print("🗑️ Intentando borrar pedido histórico ID: $id");
-
       // 1. ACTUALIZACIÓN OPTIMISTA (UI)
       // Lo borramos de la lista local inmediatamente para que la app se sienta rápida
       listaPedidos.removeWhere((p) => p.id == id);
@@ -214,11 +197,7 @@ class PedidoProvider extends ChangeNotifier {
       // 2. LLAMADA AL SERVIDOR
       // Le decimos al backend que lo borre definitivamente
       await pedidoRepository.deletePedido(id);
-
-      print("✅ Pedido $id eliminado correctamente del servidor.");
     } catch (e) {
-      print("❌ Error eliminando pedido: $e");
-
       // Si falla el servidor, recargamos la lista para que el pedido vuelva a aparecer
       // (Así el usuario sabe que no se borró)
       await inicializarDatos();

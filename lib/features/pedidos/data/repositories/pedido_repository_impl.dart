@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
@@ -52,7 +53,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
         throw Exception('Error servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print("⚠️ Error Menu Online ($e). Usando modo offline.");
+      debugPrint("⚠️ Error Menu Online ($e). Usando modo offline.");
       return await _getLocalMenu();
     }
   }
@@ -108,7 +109,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
         throw Exception('Error al cargar pedidos: ${response.statusCode}');
       }
     } catch (e) {
-      print("❌ Error en getPedidos: $e");
+      debugPrint("❌ Error en getPedidos: $e");
       throw Exception('Error de conexión: $e');
     }
   }
@@ -153,15 +154,12 @@ class PedidoRepositoryImpl implements PedidoRepository {
       };
 
       final String jsonBody = jsonEncode(bodyData);
-      print("📤 ENVIANDO PEDIDO: $jsonBody");
 
       final response = await http.post(
         url,
         headers: await _getAuthHeaders(),
         body: jsonBody,
       );
-
-      print("📥 RESPUESTA: ${response.statusCode} ${response.body}");
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -182,7 +180,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
         throw Exception('Error Backend: ${response.body}');
       }
     } catch (e) {
-      print("❌ ERROR CRÍTICO: $e");
+      debugPrint("❌ ERROR CRÍTICO: $e");
       throw Exception('No se pudo enviar el pedido: $e');
     }
   }

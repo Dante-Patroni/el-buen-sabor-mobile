@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/models/mesa.dart';
-import '../providers/mesa_provider.dart';
+
 
 import '../../../pedidos/presentation/providers/pedido_provider.dart';
-import '../../../pedidos/presentation/widgets/pedido_item.dart';
 import '../../../pedidos/presentation/pages/nuevo_pedido_page.dart';
 // Asegúrate de tener este import si usas el widget separado,
 // o si definiste PedidoList en otro lado.
@@ -33,7 +32,6 @@ class _MesaDetailScreenState extends State<MesaDetailScreen> {
   Widget build(BuildContext context) {
     // 👇 AQUÍ DEFINIMOS EL NOMBRE "pedidoProvider"
     final pedidoProvider = Provider.of<PedidoProvider>(context);
-    final mesaProvider = Provider.of<MesaProvider>(context);
 
     // 1. Convertimos el ID de la mesa actual a String para comparar
     final mesaIdString = widget.mesa.id.toString();

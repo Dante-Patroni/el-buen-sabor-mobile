@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StorageService {
@@ -18,9 +19,9 @@ class StorageService {
   Future<void> saveToken(String token) async {
     try {
       await _storage.write(key: _keyToken, value: token);
-      print("🔐 Token guardado en SecureStorage");
+      debugPrint("🔐 Token guardado en SecureStorage");
     } catch (e) {
-      print("❌ Error guardando token: $e");
+      debugPrint("❌ Error guardando token: $e");
     }
   }
 
@@ -40,6 +41,6 @@ class StorageService {
   // ==========================================
   Future<void> deleteToken() async {
     await _storage.delete(key: _keyToken);
-    print("👋 Token eliminado (Logout)");
+    debugPrint("👋 Token eliminado (Logout)");
   }
 }
