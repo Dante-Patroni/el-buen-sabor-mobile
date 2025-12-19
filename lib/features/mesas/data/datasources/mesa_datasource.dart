@@ -1,21 +1,40 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../../../core/services/storage_service.dart'; // 👈 Importamos la Caja Fuerte
 import '../models/mesa_model.dart';
 
 class MesaDataSource {
-  // ⚠️ Tu IP local
+  // ⚠️ Tu IP local correcta
   final String baseUrl = 'http://192.168.18.3:3000/api/mesas';
 
-  // 1. GET MESAS (El que ya tenías)
+  // Instancia del servicio de almacenamiento
+  final StorageService _storage = StorageService();
+
+  // 🔐 HELPER: Obtener Headers con Token
+  Future<Map<String, String>> _getAuthHeaders() async {
+    // Leemos el token de la caja fuerte
+    String? token = await _storage.getToken();
+
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $token", // 👈 LA LLAVE MAESTRA
+    };
+  }
+
+  // 1. GET MESAS (Ahora blindado)
   Future<List<MesaModel>> getMesasFromApi() async {
     try {
-      final response = await http.get(Uri.parse(baseUrl));
+      final url = Uri.parse(baseUrl);
+
+      // 👇 Inyectamos los headers aquí
+      final response = await http.get(url, headers: await _getAuthHeaders());
 
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
         return data.map((json) => MesaModel.fromJson(json)).toList();
       } else {
+        // Si el token expiró o es inválido, aquí saltará el error
         throw Exception('Error API: ${response.statusCode}');
       }
     } catch (e) {
@@ -23,21 +42,18 @@ class MesaDataSource {
     }
   }
 
-  // 👇 2. CERRAR MESA (El nuevo método)
-  // Aquí encapsulamos toda la lógica sucia de la API
-  // 2. SOLO MODIFICAMOS ESTE (Para coincidir con tu Backend)
+  // 2. CERRAR MESA (Ahora blindado)
   Future<void> cerrarMesa(int id) async {
-    // 👇 AQUÍ AGREGAMOS "/cierre" PORQUE TU BACKEND LO PIDE
-    final url = Uri.parse('$baseUrl/$id/cierre'); 
-    
+    final url = Uri.parse('$baseUrl/$id/cierre');
+
     debugPrint("🌐 CERRANDO MESA EN: $url");
 
     try {
-      // 👇 USAMOS POST (Porque en tu ruta dice router.post)
+      // 👇 Inyectamos los headers aquí también
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"estado": "libre"}), 
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({"estado": "libre"}),
       );
 
       if (response.statusCode != 200) {

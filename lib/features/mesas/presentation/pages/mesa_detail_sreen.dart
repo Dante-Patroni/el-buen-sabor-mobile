@@ -1,3 +1,4 @@
+import 'package:el_buen_sabor_app/features/pedidos/presentation/pages/pedido_list.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,8 @@ import '../providers/mesa_provider.dart';
 import '../../../pedidos/presentation/providers/pedido_provider.dart';
 import '../../../pedidos/presentation/widgets/pedido_item.dart';
 import '../../../pedidos/presentation/pages/nuevo_pedido_page.dart';
+// Asegúrate de tener este import si usas el widget separado,
+// o si definiste PedidoList en otro lado.
 
 class MesaDetailScreen extends StatefulWidget {
   final Mesa mesa;
@@ -17,184 +20,149 @@ class MesaDetailScreen extends StatefulWidget {
 }
 
 class _MesaDetailScreenState extends State<MesaDetailScreen> {
-  
   @override
   void initState() {
     super.initState();
+    // 1. Al entrar, le decimos al Provider que descargue los datos frescos del servidor
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 1. Cargamos pedidos
       Provider.of<PedidoProvider>(context, listen: false).inicializarDatos();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Providers
+    // 👇 AQUÍ DEFINIMOS EL NOMBRE "pedidoProvider"
     final pedidoProvider = Provider.of<PedidoProvider>(context);
-    final mesaProvider = Provider.of<MesaProvider>(context); // Para tener acceso a las funciones
+    final mesaProvider = Provider.of<MesaProvider>(context);
 
-    // 2. FILTRADO: Obtenemos los pedidos de ESTA mesa
-    final pedidosDeEstaMesa = pedidoProvider.listaPedidos.where((pedido) {
-      return pedido.mesa.toString() == widget.mesa.id.toString();
+    // 1. Convertimos el ID de la mesa actual a String para comparar
+    final mesaIdString = widget.mesa.id.toString();
+
+    // 2. Filtramos la lista global:
+    // "Dame solo los pedidos donde el id de mesa coincida con esta pantalla"
+    final pedidosDeEstaMesa = pedidoProvider.listaPedidos.where((p) {
+      // ✅ Corregido: pedidoProvider
+      return p.mesa == mesaIdString;
     }).toList();
 
-    // 3. 🧮 CÁLCULO LOCAL DEL TOTAL (Infalible)
-    // Sumamos: Precio del plato * Cantidad (asumimos cantidad 1 si no hay campo cantidad)
-    double totalCalculado = 0.0;
-    for (var pedido in pedidosDeEstaMesa) {
-      final plato = pedidoProvider.getPlatoById(pedido.platoId);
-      if (plato != null) {
-        totalCalculado += plato.precio;
-      }
+    // 3. Calculamos el total sumando solo los pedidos de esta lista filtrada
+    double totalMesa = 0;
+    for (var p in pedidosDeEstaMesa) {
+      // Sumamos solo si no está cancelado
+      if (p.estado.name != 'cancelado') totalMesa += p.total;
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Mesa ${widget.mesa.id} - Detalle"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-               pedidoProvider.inicializarDatos();
-               mesaProvider.cargarMesas();
-            },
-          )
-        ],
-      ),
+      appBar: AppBar(title: Text("Mesa ${widget.mesa.nombre}")),
       body: Column(
         children: [
-          // --- CABECERA ---
+          // -------------------------------------------------------
+          // 4. LISTA DE PEDIDOS (FILTRADA)
+          // -------------------------------------------------------
+          Expanded(
+            child:
+                pedidoProvider
+                    .isLoading // ✅ Corregido: pedidoProvider
+                ? const Center(child: CircularProgressIndicator())
+                : PedidoList(
+                    pedidos: pedidosDeEstaMesa,
+                  ), // Pasamos la lista limpia
+          ),
+
+          // -------------------------------------------------------
+          // 5. SECCIÓN INFERIOR (TOTAL Y BOTONES)
+          // -------------------------------------------------------
           Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.orange.shade50,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
             child: Column(
               children: [
+                // TOTAL
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Cliente: ${widget.mesa.nombre}",
-                        style: const TextStyle(fontSize: 16)),
-                    Text("Estado: ${widget.mesa.estado}",
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Total Mesa:",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "\$${totalMesa.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
                   ],
                 ),
-                const Divider(),
+                const SizedBox(height: 15),
+
+                // BOTONES
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("TOTAL:",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    
-                    // 👇 AQUÍ MOSTRAMOS EL TOTAL CALCULADO AL MOMENTO
-                    Text("\$${totalCalculado.toStringAsFixed(2)}",
-                        style: const TextStyle(
-                            fontSize: 24,
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // --- LISTA DE PEDIDOS ---
-          Expanded(
-            child: pedidoProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : pedidosDeEstaMesa.isEmpty
-                    ? const Center(child: Text("No hay platos registrados aún."))
-                    : ListView.builder(
-                        itemCount: pedidosDeEstaMesa.length,
-                        itemBuilder: (context, index) {
-                          final pedido = pedidosDeEstaMesa[index];
-                          final plato = pedidoProvider.getPlatoById(pedido.platoId);
-
-                          return PedidoItem(
-                            pedido: pedido,
-                            plato: plato,
-                            onDelete: null,
+                    // CERRAR MESA
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          // Aquí iría tu lógica para liberar la mesa (mesaProvider.liberarMesa...)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Funcionalidad Cerrar Mesa: Pendiente",
+                              ),
+                            ),
                           );
                         },
+                        child: const Text("Cerrar Mesa"),
                       ),
-          ),
+                    ),
+                    const SizedBox(width: 10),
 
-          // --- BOTONES ---
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                // 🟢 AGREGAR
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final pProvider = context.read<PedidoProvider>();
-                      pProvider.iniciarPedido(widget.mesa.id.toString());
-                      pProvider.setCliente(widget.mesa.nombre);
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const NuevoPedidoPage()),
-                      ).then((_) {
-                        pProvider.inicializarDatos();
-                        if (context.mounted) {
-                           context.read<MesaProvider>().cargarMesas();
-                        }
-                      });
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text("Agregar"),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                
-                // 🔴 CERRAR MESA
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text("Confirmar Cierre"),
-                          // Usamos también el total calculado aquí
-                          content: Text("¿Deseas cerrar la mesa?\n\nTotal Final: \$${totalCalculado.toStringAsFixed(2)}"),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                              onPressed: () async {
-                                Navigator.pop(ctx); 
-                                try {
-                                  // Llamamos al método cerrar del Provider
-                                  await context.read<MesaProvider>().cerrarMesa(widget.mesa.id);
-                                  
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text("✅ Mesa cerrada")));
-                                    Navigator.pop(context); // Vuelve al mapa
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    // Aquí verás el error en rojo si falla
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
-                                  }
-                                }
-                              },
-                              child: const Text("Confirmar"),
-                            )
-                          ],
+                    // AGREGAR PEDIDO
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.receipt_long),
-                    label: const Text("Cerrar Mesa"),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                  ),
+                        onPressed: () {
+                          // 👇 Configuramos el provider para saber a quién cobrarle
+                          pedidoProvider.iniciarPedido(
+                            mesaIdString,
+                          ); // ✅ Corregido
+                          pedidoProvider.setCliente(
+                            widget.mesa.nombre,
+                          ); // ✅ Corregido
+
+                          // Vamos a la pantalla de selección de comida
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const NuevoPedidoPage(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text("Agregar"),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

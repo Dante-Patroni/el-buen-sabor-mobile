@@ -1,7 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
-import 'package:el_buen_sabor_app/core/database/db_helper.dart';
+
+// 👇 Importamos el servicio de seguridad y el DB Helper
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/database/db_helper.dart';
+
 import '../../domain/models/pedido.dart';
 import '../../domain/models/plato.dart';
 import '../../domain/repositories/pedido_repository.dart';
@@ -9,116 +13,177 @@ import '../models/pedido_model.dart';
 import '../models/plato_model.dart';
 
 class PedidoRepositoryImpl implements PedidoRepository {
-  // Arquitectura híbrida: API REST + Base de datos local
   final DBHelper _dbHelper = DBHelper.instance;
+  final StorageService _storage = StorageService();
 
-  // ⚠️ IP local del servidor Node.js
+  // ⚠️ Tu IP
   static const String _baseUrl = 'http://192.168.18.3:3000/api';
 
+  // 🔐 HELPER: Obtener Headers con Token
+  Future<Map<String, String>> _getAuthHeaders() async {
+    String? token = await _storage.getToken();
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $token",
+    };
+  }
+
   // ===========================================================================
-  // 🥘 GET MENU (HÍBRIDO: Network First -> Fallback to Cache)
+  // 🥘 GET MENU (Blindado)
   // ===========================================================================
   @override
   Future<List<Plato>> getMenu() async {
     try {
-      // 1. INTENTO ONLINE
-      final url = Uri.parse('$_baseUrl/platos');
-      final response = await http.get(url).timeout(const Duration(seconds: 5));
+      final url = Uri.parse('$_baseUrl/platos'); // ✅ Usamos _baseUrl
+
+      final response = await http
+          .get(url, headers: await _getAuthHeaders())
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = jsonDecode(response.body);
-        final platosOnline =
-            jsonList.map((j) => PlatoModel.fromJson(j)).toList();
+        final platosOnline = jsonList
+            .map((j) => PlatoModel.fromJson(j))
+            .toList();
 
-        // 💾 SINCRONIZACIÓN: Guardamos en SQLite
         await _syncMenuLocal(platosOnline);
-
         return platosOnline;
       } else {
         throw Exception('Error servidor: ${response.statusCode}');
       }
     } catch (e) {
-      // 2. FALLBACK OFFLINE
+      print("⚠️ Error Menu Online ($e). Usando modo offline.");
       return await _getLocalMenu();
     }
   }
 
-  // 📥 Helper: Leer de SQLite
-  Future<List<Plato>> _getLocalMenu() async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query('platos');
-    if (maps.isEmpty) return [];
-    return maps.map((map) => PlatoModel.fromMap(map)).toList();
-  }
-
-  // 💾 Helper: Guardar en SQLite (Upsert)
-  Future<void> _syncMenuLocal(List<PlatoModel> platos) async {
-    final db = await _dbHelper.database;
-    await db.transaction((txn) async {
-      for (var plato in platos) {
-        await txn.insert(
-          'platos',
-          plato.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-      }
-    });
-  }
-
   // ===========================================================================
-  // 📝 INSERTAR PEDIDO (CORREGIDO)
-  // ===========================================================================
-  @override
-  Future<int> insertPedido(Pedido pedido) async {
-    final url = Uri.parse('$_baseUrl/pedidos');
-    try {
-      // 👇 1. CONVERSIÓN (Aquí ocurre la magia)
-      // Transformamos la Entidad pura en un Modelo capaz de convertirse a JSON
-      final pedidoModel = PedidoModel.fromEntity(pedido);
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        // 👇 CAMBIO CLAVE: Usamos .toJson() para manejar el ENUM automáticamente
-        body: jsonEncode(pedidoModel.toJson()),
-      );
-
-      if (response.statusCode == 201) {
-        final json = jsonDecode(response.body);
-
-        // 👇 SOLUCIÓN DEL ERROR 'Null subtype':
-        // Verificamos que 'id' exista antes de devolverlo
-        if (json is Map && json.containsKey('id')) {
-          return int.parse(json['id'].toString());
-        }
-        return 0; // Si el backend no devuelve ID, devolvemos 0 (seguro)
-      } else {
-        final errorJson = jsonDecode(response.body);
-        throw Exception(
-            errorJson['error'] ?? 'Error desconocido al crear pedido');
-      }
-    } catch (e) {
-      throw Exception('No se pudo enviar el pedido: $e');
-    }
-  }
-
-  // ===========================================================================
-  // 📋 GET PEDIDOS
+  // 📝 GET PEDIDOS (SOLUCIÓN FALTA PLATO 0)
   // ===========================================================================
   @override
   Future<List<Pedido>> getPedidos() async {
-    final url = Uri.parse('$_baseUrl/pedidos');
     try {
-      final response = await http.get(url);
+      // ✅ Corregido: Usamos _baseUrl (con guion bajo)
+      final response = await http.get(
+        Uri.parse('$_baseUrl/pedidos'),
+        headers: await _getAuthHeaders(),
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = jsonDecode(response.body);
-        // Usamos Pedido.fromJson para que parsee el ENUM correctamente
-        return jsonList.map((j) => PedidoModel.fromJson(j)).toList();
+        final List<Pedido> listaAplanada = [];
+
+        // 🔄 RECORREMOS LOS TICKETS (PEDIDOS PADRE)
+        for (var jsonPedido in jsonList) {
+          // Verificamos si tiene detalles (los platos)
+          if (jsonPedido['DetallePedidos'] != null) {
+            final detalles = jsonPedido['DetallePedidos'] as List;
+
+            // 🔄 RECORREMOS LOS DETALLES (HIJOS)
+            for (var detalle in detalles) {
+              // CREAMOS UN PEDIDO VISUAL POR CADA PLATO
+              listaAplanada.add(
+                PedidoModel(
+                  id: jsonPedido['id'],
+                  mesa: jsonPedido['mesa']?.toString() ?? '',
+                  cliente: jsonPedido['cliente']?.toString() ?? 'Anónimo',
+                  estado: _mapEstado(jsonPedido['estado']),
+                  fecha: jsonPedido['createdAt'] != null
+                      ? DateTime.parse(jsonPedido['createdAt'])
+                      : null,
+
+                  // 👇 ESTO REQUIERE QUE HAYAS ACTUALIZADO PEDIDO_MODEL.DART
+                  platoId: detalle['PlatoId'] ?? 0,
+                  cantidad: detalle['cantidad'] ?? 1,
+                  total: double.tryParse(detalle['subtotal'].toString()) ?? 0.0,
+                  aclaracion: "",
+                ),
+              );
+            }
+          }
+        }
+
+        return listaAplanada;
       } else {
         throw Exception('Error al cargar pedidos: ${response.statusCode}');
       }
     } catch (e) {
-      return [];
+      print("❌ Error en getPedidos: $e");
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  EstadoPedido _mapEstado(String? estado) {
+    switch (estado?.toLowerCase()) {
+      case 'pendiente':
+        return EstadoPedido.pendiente;
+      case 'en_preparacion':
+        return EstadoPedido.enPreparacion;
+      case 'entregado':
+        return EstadoPedido.entregado;
+      case 'rechazado':
+        return EstadoPedido.rechazado;
+      case 'cancelado':
+        return EstadoPedido.cancelado;
+      default:
+        return EstadoPedido.pendiente;
+    }
+  }
+
+  // ===========================================================================
+  // 🚀 INSERTAR PEDIDO
+  // ===========================================================================
+  @override
+  Future<int> insertPedido(String mesaId, List<Pedido> carrito) async {
+    final url = Uri.parse('$_baseUrl/pedidos'); // ✅ Corregido _baseUrl
+
+    try {
+      final List<Map<String, dynamic>> listaProductos = carrito.map((item) {
+        return {
+          "platoId": item.platoId,
+          "cantidad": item.cantidad,
+          "aclaracion": item.aclaracion ?? "",
+        };
+      }).toList();
+
+      final Map<String, dynamic> bodyData = {
+        "mesa": mesaId,
+        "cliente": "Cliente App",
+        "productos": listaProductos,
+      };
+
+      final String jsonBody = jsonEncode(bodyData);
+      print("📤 ENVIANDO PEDIDO: $jsonBody");
+
+      final response = await http.post(
+        url,
+        headers: await _getAuthHeaders(),
+        body: jsonBody,
+      );
+
+      print("📥 RESPUESTA: ${response.statusCode} ${response.body}");
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+
+        // 👇 MEJORA: Buscar ID dentro de 'data' si existe (basado en tus logs)
+        if (json is Map) {
+          if (json.containsKey('data') &&
+              json['data'] is Map &&
+              json['data'].containsKey('id')) {
+            return int.parse(json['data']['id'].toString());
+          }
+          if (json.containsKey('id')) {
+            return int.parse(json['id'].toString());
+          }
+        }
+        return 1; // Éxito genérico si no encontramos ID
+      } else {
+        throw Exception('Error Backend: ${response.body}');
+      }
+    } catch (e) {
+      print("❌ ERROR CRÍTICO: $e");
+      throw Exception('No se pudo enviar el pedido: $e');
     }
   }
 
@@ -129,26 +194,35 @@ class PedidoRepositoryImpl implements PedidoRepository {
   Future<void> deletePedido(int id) async {
     final url = Uri.parse('$_baseUrl/pedidos/$id');
     try {
-      final response = await http.delete(url);
-      if (response.statusCode != 200) {
-        throw Exception('Error eliminar: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error conexión eliminar: $e');
-    }
+      await http.delete(url, headers: await _getAuthHeaders());
+    } catch (_) {}
   }
 
-  // ===========================================================================
-  // 🔄 UPDATE ESTADO
-  // ===========================================================================
+  // Implementación vacía para cumplir contrato
   @override
-  Future<void> updateEstado(int id, EstadoPedido nuevoEstado) async {
+  Future<void> updateEstado(int id, EstadoPedido nuevoEstado) async {}
+
+  // ---------------------------------------------------------------------------
+  // 💾 MÉTODOS LOCALES
+  // ---------------------------------------------------------------------------
+  Future<List<Plato>> _getLocalMenu() async {
     final db = await _dbHelper.database;
-    await db.update(
-      'pedidos',
-      {'estado': nuevoEstado.name},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final List<Map<String, dynamic>> maps = await db.query('platos');
+    if (maps.isEmpty) return [];
+    return maps.map((map) => PlatoModel.fromMap(map)).toList();
+  }
+
+  Future<void> _syncMenuLocal(List<PlatoModel> platos) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete('platos');
+      for (var plato in platos) {
+        await txn.insert(
+          'platos',
+          plato.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
   }
 }

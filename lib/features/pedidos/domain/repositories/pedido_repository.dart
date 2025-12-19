@@ -5,12 +5,12 @@ import '../models/plato.dart';
 
 abstract class PedidoRepository {
   // Métodos para Pedidos
-  Future<int> insertPedido(Pedido pedido);
+  Future<int> insertPedido(String mesaId, List<Pedido> carrito);
   Future<List<Pedido>> getPedidos();
   Future<void> updateEstado(int id, EstadoPedido nuevoEstado);
   Future<void> deletePedido(int id);
 
   // Método auxiliar para obtener el Menú (Platos)
   // En el futuro, esto vendrá de tu API, hoy vendrá de un Mock o SQLite
-  Future<List<Plato>> getMenu(); 
+  Future<List<Plato>> getMenu();
 }

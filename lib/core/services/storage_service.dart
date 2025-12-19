@@ -1,0 +1,45 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class StorageService {
+  // Patrón Singleton: Para tener una única "Caja Fuerte" en toda la app
+  static final StorageService _instance = StorageService._internal();
+  factory StorageService() => _instance;
+  StorageService._internal();
+
+  // Instancia de la librería segura
+  final _storage = const FlutterSecureStorage();
+
+  // La "etiqueta" con la que guardaremos el dato
+  static const _keyToken = 'jwt_token';
+
+  // ==========================================
+  // 📥 1. GUARDAR (Login)
+  // ==========================================
+  Future<void> saveToken(String token) async {
+    try {
+      await _storage.write(key: _keyToken, value: token);
+      print("🔐 Token guardado en SecureStorage");
+    } catch (e) {
+      print("❌ Error guardando token: $e");
+    }
+  }
+
+  // ==========================================
+  // 📤 2. LEER (Para peticiones HTTP)
+  // ==========================================
+  Future<String?> getToken() async {
+    try {
+      return await _storage.read(key: _keyToken);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ==========================================
+  // 🗑️ 3. BORRAR (Logout)
+  // ==========================================
+  Future<void> deleteToken() async {
+    await _storage.delete(key: _keyToken);
+    print("👋 Token eliminado (Logout)");
+  }
+}

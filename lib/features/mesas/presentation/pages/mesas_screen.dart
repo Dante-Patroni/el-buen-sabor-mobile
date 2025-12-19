@@ -39,66 +39,65 @@ class _MesasScreenState extends State<MesasScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => mesaProvider.cargarMesas(),
-          )
+          ),
         ],
       ),
       body: mesaProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : mesaProvider.error.isNotEmpty
-              ? Center(child: Text('Error: ${mesaProvider.error}'))
-              : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 1.4,
-                    ),
-                    itemCount: mesaProvider.mesas.length,
-                    itemBuilder: (context, index) {
-                      final mesa = mesaProvider.mesas[index];
-
-                      return MesaItem(
-                        mesa: mesa,
-                        onTap: () {
-                          // 👇 2. LÓGICA DE NAVEGACIÓN INTELIGENTE
-                          if (mesa.estado == 'libre') {
-                            // A. Si está LIBRE -> Iniciamos Nuevo Pedido
-
-                            // 1. Preparamos el provider (limpiamos carrito, seteamos mesa)
-                            context
-                                .read<PedidoProvider>()
-                                .iniciarPedido(mesa.id.toString());
-
-                            // 2. Navegamos a la pantalla de carga
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const NuevoPedidoPage(),
-                              ),
-                            ).then((_) {
-                              // Cuando volvemos, recargamos las mesas por si se ocupó alguna
-                              mesaProvider.cargarMesas();
-                            });
-                          } else {
-                            // B. Si NO ESTÁ LIBRE -> Conectamos con mesa ocupada Navegamos a Detalle
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => MesaDetailScreen(mesa: mesa),
-                              ),
-                            ).then((_) {
-                              // Cuando volvemos, recargamos las mesas por si hubo cambios
-                              mesaProvider.cargarMesas();
-                            });
-                          }
-                        },
-                      );
-                    },
-                  ),
+          ? Center(child: Text('Error: ${mesaProvider.error}'))
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.4,
                 ),
+                itemCount: mesaProvider.mesas.length,
+                itemBuilder: (context, index) {
+                  final mesa = mesaProvider.mesas[index];
+
+                  return MesaItem(
+                    mesa: mesa,
+                    onTap: () {
+                      // 👇 2. LÓGICA DE NAVEGACIÓN INTELIGENTE
+                      if (mesa.estado == 'libre') {
+                        // A. Si está LIBRE -> Iniciamos Nuevo Pedido
+
+                        // 1. Preparamos el provider (limpiamos carrito, seteamos mesa)
+                        context.read<PedidoProvider>().iniciarPedido(
+                          mesa.id.toString(),
+                        );
+
+                        // 2. Navegamos a la pantalla de carga
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NuevoPedidoPage(),
+                          ),
+                        ).then((_) {
+                          // Cuando volvemos, recargamos las mesas por si se ocupó alguna
+                          mesaProvider.cargarMesas();
+                        });
+                      } else {
+                        // B. Si NO ESTÁ LIBRE -> Conectamos con mesa ocupada Navegamos a Detalle
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MesaDetailScreen(mesa: mesa),
+                          ),
+                        ).then((_) {
+                          // Cuando volvemos, recargamos las mesas por si hubo cambios
+                          mesaProvider.cargarMesas();
+                        });
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
     );
   }
 }

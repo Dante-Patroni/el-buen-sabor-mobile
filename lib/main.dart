@@ -7,9 +7,14 @@ import 'package:provider/provider.dart';
 // Importamos las capas necesarias
 import 'features/pedidos/data/repositories/pedido_repository_impl.dart';
 import 'features/pedidos/presentation/providers/pedido_provider.dart';
-// import 'features/pedidos/presentation/pages/nuevo_pedido_page.dart'; // Ya no es la home
+
 import 'features/mesas/presentation/providers/mesa_provider.dart';
-import 'features/mesas/presentation/pages/mesas_screen.dart'; // 👈 Importamos la nueva pantalla
+// import 'features/mesas/presentation/pages/mesas_screen.dart'; // Ya no es la home inicial
+
+// 👇 NUEVOS IMPORTS DE AUTH
+import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/auth/presentation/pages/login_page.dart';
+import 'features/pedidos/data/repositories/pedido_repository_impl.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,16 +26,21 @@ class ElBuenSaborApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Instancia del Repositorio de Pedidos (Singleton implícito)
+    // Instancia del Repositorio de Pedidos
     final pedidoRepository = PedidoRepositoryImpl();
 
     return MultiProvider(
       providers: [
-        // 1. Provider de PEDIDOS (Lo mantenemos para cuando entremos a una mesa)
-        ChangeNotifierProvider(create: (_) => PedidoProvider(pedidoRepository)),
+        // 1. Provider de AUTENTICACIÓN (🔐 NUEVO - El Guardián)
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
 
-        // 2. Provider de MESAS (🆕 NUEVO)
-        // Este provider se encargará de gestionar el mapa de mesas
+        // 2. Provider de PEDIDOS
+        ChangeNotifierProvider(
+          create: (_) =>
+              PedidoProvider(pedidoRepository: PedidoRepositoryImpl()),
+        ),
+
+        // 3. Provider de MESAS
         ChangeNotifierProvider(create: (_) => MesaProvider()),
       ],
       child: MaterialApp(
@@ -40,9 +50,9 @@ class ElBuenSaborApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
           useMaterial3: true,
         ),
-        // [PASO CRÍTICO 3]: Inicio de la UI
-        // Cambiamos la entrada principal al Mapa de Mesas
-        home: const MesasScreen(), // 👈 ¡Aquí está el cambio clave!
+        // [PASO CRÍTICO]: Inicio de la App
+        // Ahora arrancamos en el Login para pedir credenciales
+        home: const LoginPage(),
       ),
     );
   }

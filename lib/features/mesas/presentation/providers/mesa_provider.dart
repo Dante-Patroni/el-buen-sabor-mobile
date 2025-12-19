@@ -7,7 +7,7 @@ class MesaProvider extends ChangeNotifier {
   // 👇 CORRECCIÓN 2: Corregido el nombre de la clase (Impl)
   final MesaRepositoryImpl repository = MesaRepositoryImpl(MesaDataSource());
 
-  List<Mesa> _mesas = []; 
+  List<Mesa> _mesas = [];
   bool _isLoading = false;
   String _error = '';
 
@@ -31,6 +31,7 @@ class MesaProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
   // 👇 2. CERRAR MESA (El método nuevo para EBS-17)
   Future<void> cerrarMesa(int id) async {
     try {
@@ -39,11 +40,10 @@ class MesaProvider extends ChangeNotifier {
 
       // B. Si el backend dijo OK, recargamos la lista inmediatamente
       // Esto hará que la mesa se pinte de GRIS en el mapa
-      await cargarMesas(); 
-      
+      await cargarMesas();
     } catch (e) {
       // Si falla, pasamos el error a la UI (pantalla)
-      rethrow; 
+      rethrow;
     }
   }
 }

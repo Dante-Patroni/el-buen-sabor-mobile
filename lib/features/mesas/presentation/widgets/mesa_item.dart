@@ -5,16 +5,12 @@ class MesaItem extends StatelessWidget {
   final Mesa mesa;
   final VoidCallback onTap;
 
-  const MesaItem({
-    super.key, 
-    required this.mesa, 
-    required this.onTap
-  });
+  const MesaItem({super.key, required this.mesa, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isOcupada = mesa.estado == 'ocupada';
-    
+
     // Colores definidos
     final colorFondo = isOcupada ? Colors.deepOrange.shade50 : Colors.white;
     final colorBorde = isOcupada ? Colors.deepOrange : Colors.grey.shade300;
@@ -27,15 +23,15 @@ class MesaItem extends StatelessWidget {
           color: colorFondo,
           borderRadius: BorderRadius.circular(16), // Bordes más redondeados
           border: Border.all(
-            color: colorBorde, 
-            width: isOcupada ? 2 : 1 // Borde más grueso si está ocupada
+            color: colorBorde,
+            width: isOcupada ? 2 : 1, // Borde más grueso si está ocupada
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 4),
-            )
+            ),
           ],
         ),
         child: Column(
@@ -46,9 +42,9 @@ class MesaItem extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.table_restaurant_rounded, 
-                  size: 28, 
-                  color: colorIcono
+                  Icons.table_restaurant_rounded,
+                  size: 28,
+                  color: colorIcono,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -61,13 +57,16 @@ class MesaItem extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // Fila inferior: Estado / Mozo
             if (isOcupada)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.deepOrange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -75,7 +74,11 @@ class MesaItem extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.person, size: 14, color: Colors.deepOrange),
+                    const Icon(
+                      Icons.person,
+                      size: 14,
+                      color: Colors.deepOrange,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       mesa.mozoAsignado ?? "Dante", // Tu lógica de Mozo
@@ -94,7 +97,7 @@ class MesaItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey,
-                  letterSpacing: 0.5
+                  letterSpacing: 0.5,
                 ),
               ),
           ],

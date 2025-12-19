@@ -25,9 +25,7 @@ class PedidoItem extends StatelessWidget {
           plato?.nombre ?? "Plato desconocido",
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(
-          "Mesa: ${pedido.mesa}   |   Cliente: ${pedido.cliente}",
-        ),
+        subtitle: Text("Mesa: ${pedido.mesa}   |   Cliente: ${pedido.cliente}"),
         trailing: IconButton(
           icon: const Icon(Icons.delete, color: Colors.red),
           onPressed: onDelete,

@@ -20,8 +20,9 @@ class MesaModel extends Mesa {
 
       // 👇 AQUÍ ESTÁ LA SIMULACIÓN:
       // Si está ocupada, le asignamos un mozo (simulado o real)
-      mozoAsignado: (json['estado'] == 'ocupada') 
-          ? (json['mozo_nombre'] ?? 'Dante') // Si el backend no manda nombre, ponemos 'Dante'
+      mozoAsignado: (json['estado'] == 'ocupada')
+          ? (json['mozo_nombre'] ??
+                'Dante') // Si el backend no manda nombre, ponemos 'Dante'
           : null,
     );
   }

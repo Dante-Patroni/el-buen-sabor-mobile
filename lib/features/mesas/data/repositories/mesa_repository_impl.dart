@@ -5,8 +5,6 @@ import '../datasources/mesa_datasource.dart';
 class MesaRepositoryImpl implements MesaRepository {
   final MesaDataSource dataSource;
 
- 
-
   MesaRepositoryImpl(this.dataSource);
 
   @override

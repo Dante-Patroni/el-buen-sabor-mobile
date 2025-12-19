@@ -6,16 +6,19 @@ class PedidoModel extends Pedido {
     required super.mesa,
     required super.cliente,
     required super.platoId,
-    required super.fecha,
-    required super.estado,
+    super.fecha,
+    super.estado,
+    super.total,
+    // 👇 AGREGADO: Necesarios para el detalle del pedido
+    super.cantidad = 1,
+    super.aclaracion,
   });
 
   // ==========================================================
-  // 1. ADAPTERS (Domino <-> Data)
+  // 1. ADAPTERS (Dominio <-> Data)
   // ==========================================================
-  
+
   // 🔌 Mapper: Convierte Entidad (Dominio) -> Modelo (Data)
-  // Este es el puente que nos faltaba para el Repositorio
   factory PedidoModel.fromEntity(Pedido pedido) {
     return PedidoModel(
       id: pedido.id,
@@ -24,6 +27,10 @@ class PedidoModel extends Pedido {
       platoId: pedido.platoId,
       fecha: pedido.fecha,
       estado: pedido.estado,
+      total: pedido.total,
+      // 👇 AGREGADO: Pasamos los nuevos datos
+      cantidad: pedido.cantidad,
+      aclaracion: pedido.aclaracion,
     );
   }
 
@@ -37,22 +44,34 @@ class PedidoModel extends Pedido {
       id: json['id'],
       mesa: (json['mesa'] ?? '').toString(),
       cliente: (json['cliente'] ?? '').toString(),
-      platoId: _parsePlatoId(json), // Tu blindaje funciona perfecto aquí
-      fecha: DateTime.tryParse(json['fecha']?.toString() ?? "") ?? DateTime.now(),
-      estado: _mapEstado(json['estado']), // Tu mapper inteligente
+      platoId: _parsePlatoId(json), // ✅ Mantenemos tu validador robusto
+      fecha:
+          DateTime.tryParse(
+            json['fecha']?.toString() ?? json['createdAt']?.toString() ?? "",
+          ) ??
+          DateTime.now(),
+      estado: _mapEstado(json['estado']),
+      total: double.tryParse(json['total']?.toString() ?? "0") ?? 0.0,
+
+      // 👇 AGREGADO: Leemos cantidad y aclaración si vienen
+      cantidad: int.tryParse(json['cantidad']?.toString() ?? "1") ?? 1,
+      aclaracion: json['aclaracion'],
     );
   }
 
   // 📤 APP -> API (toJson)
-  // Usamos esto para enviar al Backend (Node.js suele preferir camelCase)
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
       'mesa': mesa,
       'cliente': cliente,
-      'platoId': platoId, // ⚠️ API suele usar camelCase
+      'platoId': platoId,
       'fecha': fecha.toIso8601String(),
-      'estado': estado.name, // "pendiente", "enPreparacion"
+      'estado': estado.name,
+      'total': total,
+      // 👇 AGREGADO: Incluimos los campos nuevos
+      'cantidad': cantidad,
+      'aclaracion': aclaracion,
     };
   }
 
@@ -62,9 +81,13 @@ class PedidoModel extends Pedido {
       id: map['id'],
       mesa: map['mesa'],
       cliente: map['cliente'],
-      platoId: map['plato_id'], // SQLite suele usar snake_case
+      platoId: map['plato_id'],
       fecha: DateTime.parse(map['fecha']),
       estado: _mapEstado(map['estado']),
+      total: map['total'] ?? 0.0,
+      // 👇 AGREGADO: Soporte para SQLite futuro
+      cantidad: map['cantidad'] ?? 1,
+      aclaracion: map['aclaracion'],
     );
   }
 
@@ -74,21 +97,24 @@ class PedidoModel extends Pedido {
       'id': id,
       'mesa': mesa,
       'cliente': cliente,
-      'plato_id': platoId, // SQLite snake_case
+      'plato_id': platoId,
       'fecha': fecha.toIso8601String(),
       'estado': estado.name,
+      'total': total,
+      // 👇 AGREGADO
+      'cantidad': cantidad,
+      'aclaracion': aclaracion,
     };
   }
 
   // ==========================================================
-  // 3. HELPERS (Tus funciones de blindaje)
+  // 3. HELPERS (Tus funciones originales intactas)
   // ==========================================================
 
   static EstadoPedido _mapEstado(dynamic estadoValue) {
     if (estadoValue == null) return EstadoPedido.pendiente;
     final String estadoString = estadoValue.toString().toLowerCase().trim();
 
-    // Casos manuales
     if (estadoString == 'en_preparacion') return EstadoPedido.enPreparacion;
     if (estadoString == 'enpreparacion') return EstadoPedido.enPreparacion;
 
@@ -102,6 +128,7 @@ class PedidoModel extends Pedido {
     }
   }
 
+  // ✅ Tu parser de IDs es excelente, lo dejamos tal cual
   static int _parsePlatoId(Map<String, dynamic> json) {
     final val = json['platoId'] ?? json['PlatoId'] ?? json['plato_id'];
     if (val == null) return 0;
