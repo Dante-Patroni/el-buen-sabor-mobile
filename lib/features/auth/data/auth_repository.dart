@@ -3,44 +3,35 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../domain/models/usuario.dart';
 
 class AuthRepository {
   final String _baseUrl = 'http://192.168.18.3:3000/api/usuarios';
 
-  Future<String> login(String legajo, String password) async {
-    final url = Uri.parse('$_baseUrl/login');
-
-    // 👇 1. Imprime a dónde estás pegando
-    debugPrint("🌐 Intentando Login en: $url");
-    debugPrint("📤 Enviando: legajo=$legajo, pass=$password");
-
+  Future<Map<String, dynamic>> login(String legajo, String password) async {
     try {
       final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"legajo": legajo, "password": password}),
+        Uri.parse('$_baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'legajo': legajo, 'password': password}),
       );
-
-      // 👇 2. EL CHIVATO: Imprime qué respondió el server ANTES de decodificar
-      debugPrint("📥 Status Code: ${response.statusCode}");
-      debugPrint("📦 Body recibido: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['token'];
+        
+        // Devolvemos un Mapa con el Token y el Usuario ya parseado
+        return {
+          'success': true,
+          'token': data['token'],
+          'usuario': Usuario.fromJson(data['usuario']), 
+        };
       } else {
-        // Si el body es HTML, esto va a fallar, pero ya lo habremos visto en el print de arriba
-        try {
-          final errorData = jsonDecode(response.body);
-          throw Exception(errorData['mensaje'] ?? 'Error de autenticación');
-        } catch (_) {
-          // Si falla el decode del error, tiramos el body crudo
-          throw Exception('Error raro del servidor: ${response.body}');
-        }
+        // Si falla, devolvemos el mensaje del backend
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['mensaje'] ?? 'Error de autenticación');
       }
     } catch (e) {
-      debugPrint("❌ Error Fatal: $e"); // Para verlo en consola
-      rethrow;
+      throw Exception('Error de conexión: $e');
     }
   }
 }

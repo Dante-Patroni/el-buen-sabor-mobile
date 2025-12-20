@@ -1,7 +1,8 @@
+import 'package:el_buen_sabor_app/features/mesas/presentation/pages/salon_mesas_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../../../mesas/presentation/pages/mesas_screen.dart'; // Asegúrate de importar tu Home
+// Asegúrate de importar tu Home
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -112,7 +113,7 @@ class _LoginPageState extends State<LoginPage> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const MesasScreen(),
+                                    builder: (_) => const SalonMesasScreen(),
                                   ),
                                 );
                               }
