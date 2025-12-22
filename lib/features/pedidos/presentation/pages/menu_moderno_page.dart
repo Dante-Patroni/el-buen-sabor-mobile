@@ -290,42 +290,82 @@ class PlatoCard extends StatelessWidget {
   final int stockDisplay;
   final VoidCallback onTap;
 
-  const PlatoCard(
-      {super.key,
-      required this.plato,
-      required this.stockDisplay,
-      required this.onTap});
+  const PlatoCard({
+    super.key,
+    required this.plato,
+    required this.stockDisplay,
+    required this.onTap,
+  });
+
+  // 👇 1. FUNCIÓN MÁGICA: Corrige la URL para que funcione en el Emulador
+String _construirUrlImagen(String path) {
+    if (path.isEmpty) return "";
+
+    // Si ya viene con http completo, lo dejamos (ej: imagen externa)
+    if (path.startsWith("http")) return path;
+
+    // 👇 CAMBIA ESTO POR TU IP REAL QUE VISTE EN IPCONFIG
+    // Ejemplo: "192.168.1.12" (Manten el puerto 3000)
+    const String ipDeTuPC = "192.168.18.3"; // <--- ¡PON TU NÚMERO AQUÍ!
+    
+    // Tu backend devuelve "/uploads/...", así que concatenamos:
+    // http://192.168.1.12:3000/uploads/foto.jpg
+    return "http://$ipDeTuPC:3000$path".replaceAll("\\", "/");
+  }
 
   @override
   Widget build(BuildContext context) {
     final agotado = (!plato.stock.esIlimitado && stockDisplay <= 0);
+    
+    // Obtenemos la URL corregida
+    final urlFinal = _construirUrlImagen(plato.imagenPath);
+
     return Opacity(
-      // Si está agotado lo hacemos semitransparente
       opacity: agotado ? 0.6 : 1.0,
       child: Card(
-        clipBehavior:
-            Clip.antiAlias, // Recorta la imagen a los bordes redondeados
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 3,
         child: InkWell(
-          onTap: agotado ? null : onTap, // Si está agotado, click deshabilitado
+          onTap: agotado ? null : onTap,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Imagen
+              // 🖼️ IMAGEN CON GESTIÓN DE CARGA Y ERROR
               Expanded(
                 flex: 3,
-                child: plato.imagenPath.isNotEmpty
-                    ? Image.network(plato.imagenPath,
+                child: urlFinal.isNotEmpty
+                    ? Image.network(
+                        urlFinal,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.fastfood))
+                        // Si falla (ej: 404), mostramos ícono
+                        errorBuilder: (_, __, ___) => const ColoredBox(
+                          color: Colors.grey,
+                          child: Center(
+                              child: Icon(Icons.broken_image,
+                                  color: Colors.white)),
+                        ),
+                        // Mientras carga, mostramos spinner chiquito
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(
+                            child: SizedBox(
+                              width: 20, 
+                              height: 20, 
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        },
+                      )
+                    // Si no tiene path configurado
                     : const ColoredBox(
                         color: Colors.grey,
                         child: Center(
-                            child: Icon(Icons.fastfood, color: Colors.white))),
+                            child: Icon(Icons.fastfood, color: Colors.white)),
+                      ),
               ),
-              // Textos y Precio
+              
+              // 📝 TEXTOS Y PRECIO (Esto queda igual que antes)
               Expanded(
                 flex: 2,
                 child: Padding(

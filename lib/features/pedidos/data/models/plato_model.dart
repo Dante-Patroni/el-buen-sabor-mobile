@@ -33,7 +33,7 @@ class PlatoModel extends Plato {
       descripcion: json['descripcion'] ?? '',
 
       // 👇 Claves exactas de tu Sequelize (camelCase)
-      imagenPath: json['imagenPath'] ?? '',
+      imagenPath: json['imagenUrl'] ?? json['imagenPath'] ?? '',
       rubroId: json['rubroId'],
 
       esMenuDelDia: json['esMenuDelDia'] == true || json['esMenuDelDia'] == 1,
