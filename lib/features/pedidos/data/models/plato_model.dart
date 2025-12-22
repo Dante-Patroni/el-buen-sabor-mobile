@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../domain/models/plato.dart';
 
 class PlatoModel extends Plato {
@@ -10,71 +11,48 @@ class PlatoModel extends Plato {
     required super.esMenuDelDia,
     required super.categoria,
     required super.stock,
+    super.rubroId,
+    super.modificadores,
   });
 
+// 📥 API (Sequelize) -> APP
   factory PlatoModel.fromJson(Map<String, dynamic> json) {
-    // ---------------------------------------------------------
-    // 1. LÓGICA DE STOCK HÍBRIDA (La solución al misterio)
-    // ---------------------------------------------------------
-    int cantidad = 0;
-    String estadoLeido = 'AGOTADO';
+    // 1. Lógica de seguridad para Stock
+    // Leemos 'stockActual' que viene de tu DB. Si es null, ponemos 0.
+    int cantidadStock =
+        int.tryParse(json['stockActual']?.toString() ?? "0") ?? 0;
 
-    // A. ¿Viene el número directo (stockActual)?
-    if (json['stockActual'] != null) {
-      cantidad = int.tryParse(json['stockActual'].toString()) ?? 0;
-    }
-
-    // B. ¿Viene el objeto stock anidado? (Lo que vimos en tu log)
-    if (json['stock'] != null && json['stock'] is Map) {
-      // Leemos el estado que manda el servidor
-      if (json['stock']['estado'] != null) {
-        estadoLeido = json['stock']['estado'];
-      }
-
-      // Intentamos leer cantidad si existe
-      if (json['stock']['cantidad'] != null) {
-        cantidad = int.tryParse(json['stock']['cantidad'].toString()) ?? 0;
-      }
-    }
-
-    // 🚨 EL PARCHE SALVAVIDAS:
-    // Si la cantidad es 0, pero el servidor jura que está "DISPONIBLE",
-    // le ponemos un stock falso de 10 para que el botón se habilite.
-    if (cantidad == 0 && estadoLeido == 'DISPONIBLE') {
-      cantidad = 10;
-    }
-
-    // Recalculamos el estado final basado en la cantidad corregida
-    final estadoFinal = cantidad > 0 ? 'DISPONIBLE' : 'AGOTADO';
-
-    // ---------------------------------------------------------
-    // 2. PARSEO DEL RUBRO
-    // ---------------------------------------------------------
-    String nombreRubro = 'General';
-    if (json['rubro'] != null) {
-      if (json['rubro'] is Map && json['rubro']['denominacion'] != null) {
-        nombreRubro = json['rubro']['denominacion'];
-      } else if (json['rubro'] is String) {
-        nombreRubro = json['rubro'];
-      }
-    }
+    // Calculamos estado basado en la cantidad real
+    String estadoCalculado = cantidadStock > 0 ? 'DISPONIBLE' : 'AGOTADO';
 
     return PlatoModel(
       id: json['id'],
       nombre: json['nombre'] ?? 'Sin Nombre',
-      precio: double.tryParse(json['precio'].toString()) ?? 0.0,
+      // Convertimos a double asegurando que no explote si viene int o string
+      precio: double.tryParse(json['precio']?.toString() ?? "0") ?? 0.0,
       descripcion: json['descripcion'] ?? '',
+
+      // 👇 Claves exactas de tu Sequelize (camelCase)
       imagenPath: json['imagenPath'] ?? '',
+      rubroId: json['rubroId'],
+
       esMenuDelDia: json['esMenuDelDia'] == true || json['esMenuDelDia'] == 1,
-      categoria: nombreRubro,
+
+      // ✅ AHORA SÍ: Mapeamos la categoría desde el objeto incluido por Sequelize
+      categoria:
+          (json['rubro'] != null && json['rubro']['denominacion'] != null)
+              ? json['rubro']['denominacion']
+              : 'Sin Categoría',
+
+      modificadores: [],
+
       stock: StockInfo(
-        cantidad: cantidad,
+        cantidad: cantidadStock,
         esIlimitado: false,
-        estado: estadoFinal,
+        estado: estadoCalculado,
       ),
     );
   }
-
   // ... (El resto de métodos fromMap y toMap quedan igual) ...
   // 📥 SQLite (Local) -> APP
   factory PlatoModel.fromMap(Map<String, dynamic> map) {
@@ -86,6 +64,10 @@ class PlatoModel extends Plato {
       imagenPath: map['imagen_path'] ?? '',
       esMenuDelDia: (map['es_menu_del_dia'] == 1),
       categoria: map['categoria'] ?? 'General',
+      rubroId: map['rubro_id'],
+      modificadores: map['modificadores'] != null
+          ? List<String>.from(jsonDecode(map['modificadores']))
+          : [],
       stock: StockInfo(
         cantidad: map['stock_cantidad'] ?? 0,
         esIlimitado: (map['stock_ilimitado'] == 1),
@@ -103,6 +85,7 @@ class PlatoModel extends Plato {
       'imagen_path': imagenPath,
       'es_menu_del_dia': esMenuDelDia ? 1 : 0,
       'categoria': categoria,
+      'rubro_id': rubroId,
       'stock_cantidad': stock.cantidad,
       'stock_ilimitado': stock.esIlimitado ? 1 : 0,
       'stock_estado': stock.estado,

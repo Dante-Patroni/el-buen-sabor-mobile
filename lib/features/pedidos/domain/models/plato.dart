@@ -23,6 +23,8 @@ class Plato {
   final bool esMenuDelDia; // ¡Nuevo!
   final String categoria; // ¡Nuevo! (Nombre del Rubro)
   final StockInfo stock;
+  final int? rubroId; 
+  final List<String> modificadores;
 
   Plato({
     required this.id,
@@ -33,5 +35,7 @@ class Plato {
     required this.esMenuDelDia,
     required this.categoria,
     required this.stock,
+    this.rubroId, 
+    this.modificadores = const [],
   });
 }

@@ -9,8 +9,8 @@ class DBHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    // ⚠️ CAMBIO: Subimos a v5 para forzar que se borre la vieja y se cree esta nueva corregida
-    _database = await _initDB('el_buen_sabor_v5.db');
+    // ⚠️ CAMBIO: Subimos a v6 para forzar que se borre la vieja y se cree esta nueva corregida
+    _database = await _initDB('el_buen_sabor_v6.db');
     return _database!;
   }
 
@@ -48,7 +48,8 @@ class DBHelper {
         descripcion TEXT, 
         imagen_path TEXT, 
         categoria TEXT,
-        es_menu_del_dia INTEGER,          
+        es_menu_del_dia INTEGER,
+        rubro_id INTEGER,  -- 👈 NUEVO: Faltaba esta columna para el modo offline
         
         -- COLUMNAS DE STOCK
         stock_cantidad INTEGER,
