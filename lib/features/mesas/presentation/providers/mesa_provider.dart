@@ -39,7 +39,6 @@ class MesaProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        print("📦 JSON RECIBIDO: ${response.body}");
         final List<dynamic> data = jsonDecode(response.body);
         
         // 👇 TRANSFORMACIÓN DE DATOS (Adapter Logic)
@@ -79,11 +78,9 @@ class MesaProvider extends ChangeNotifier {
         }).toList();
 
       } else {
-        print("Error cargando mesas: ${response.body}");
         _error = "Error cargando mesas";
       }
     } catch (e) {
-      print("Error de conexión: $e");
       _error = "Error de conexión";
     } finally {
       _isLoading = false;
@@ -112,7 +109,6 @@ class MesaProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      print("Error al ocupar mesa: $e");
       return false;
     }
   }
@@ -137,7 +133,6 @@ class MesaProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      print("Error al cerrar mesa: $e");
       return false; // Retornamos false en vez de rethrow para manejarlo suave en la UI
     }
   }

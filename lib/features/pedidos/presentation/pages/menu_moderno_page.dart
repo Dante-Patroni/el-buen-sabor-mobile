@@ -103,8 +103,11 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
       builder: (context) => DetallePlatoModal(plato: plato),
     );
 
-    // Si volvimos y hay resultado...
-    if (resultado != null && mounted) {
+    // [Pressman]: Programación Defensiva. 
+// Verificamos 'context.mounted' en lugar de 'mounted' para garantizar 
+// que el contexto de este widget específico sigue vivo tras la espera asíncrona.
+
+if (resultado != null && context.mounted) {
       final cant = resultado['cantidad'];
       final aclaracion = resultado['aclaracion'];
 
@@ -118,7 +121,7 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
         backgroundColor: Colors.green,
         duration: const Duration(milliseconds: 500),
       ));
-    }
+}
   }
 
   @override

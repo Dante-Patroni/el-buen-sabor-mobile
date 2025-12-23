@@ -209,22 +209,31 @@ class PedidoRepositoryImpl implements PedidoRepository {
           .timeout(const Duration(seconds: 10));
 
       // 4. Analizar Resultado
+      // [Pressman]: Estándar de codificación seguro. Uso de bloques {} obligatorios.
       if (response.statusCode == 201 || response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        // Intentamos extraer el ID de varias formas posibles según cómo responda tu API
+
         if (json is Map) {
-          if (json['data'] != null && json['data']['id'] != null)
+          // Opción A: Estructura anidada
+          if (json['data'] != null && json['data']['id'] != null) {
             return int.parse(json['data']['id'].toString());
-          if (json['id'] != null) return int.parse(json['id'].toString());
+          }
+          // Opción B: Estructura plana
+          if (json['id'] != null) {
+            return int.parse(json['id'].toString());
+          }
         }
-        return 1; // ID genérico si no lo encontramos
+        return 1; // ID genérico de fallback
+      } else if (response.statusCode == 409) {
+        // Manejo de Stock Insuficiente
+        final errorJson = jsonDecode(response.body);
+        throw Exception(errorJson['error'] ?? 'Stock insuficiente');
       } else {
-        // Lanzamos excepción controlada
+        // Error genérico del servidor
         throw Exception(
             'Backend rechazó (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
-      debugPrint("❌ ERROR CRÍTICO: $e");
       throw Exception('Fallo al enviar: $e');
     }
   }

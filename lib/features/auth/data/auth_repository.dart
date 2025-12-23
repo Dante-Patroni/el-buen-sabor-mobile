@@ -1,7 +1,6 @@
 //Este archivo se encarga de golpear la puerta del Backend (POST /login).
 
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../domain/models/usuario.dart';
 
