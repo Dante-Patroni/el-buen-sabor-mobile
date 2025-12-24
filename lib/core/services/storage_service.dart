@@ -25,13 +25,15 @@ class StorageService {
     }
   }
 
-  // ==========================================
-  // 📤 2. LEER (Para peticiones HTTP)
+ // ==========================================
+  // 📤 2. LEER (Recuperar Token)
   // ==========================================
   Future<String?> getToken() async {
     try {
+      // Usamos la misma _keyToken privada que usaste para guardar
       return await _storage.read(key: _keyToken);
     } catch (e) {
+      debugPrint("❌ Error leyendo token: $e");
       return null;
     }
   }

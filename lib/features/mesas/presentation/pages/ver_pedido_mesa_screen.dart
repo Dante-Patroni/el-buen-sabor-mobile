@@ -3,15 +3,19 @@ import 'package:el_buen_sabor_app/features/pedidos/presentation/providers/pedido
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+const String baseUrl = 'http://192.168.18.3:3000';
+
 class VerPedidoMesaScreen extends StatefulWidget {
   final int mesaId;
   final int mesaNumero;
+  
 
   const VerPedidoMesaScreen({
     super.key,
     required this.mesaId,
     required this.mesaNumero,
   });
+  
 
   @override
   State<VerPedidoMesaScreen> createState() => _VerPedidoMesaScreenState();
@@ -40,9 +44,11 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
           }
 
           // Filtramos los pedidos que pertenecen a esta mesa
-          // Asumimos que pedido.mesa guarda el ID de la mesa como String
           final pedidosMesa = provider.listaPedidos.where((p) {
-            return p.mesa == widget.mesaId.toString();
+            
+            // ✅ CORRECCIÓN: Usamos mesaNumero para que coincida con lo guardado
+            return p.mesa == widget.mesaNumero.toString(); 
+
           }).toList();
 
           if (pedidosMesa.isEmpty) {
@@ -88,7 +94,7 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundImage: plato.imagenPath.isNotEmpty
-                              ? NetworkImage(plato.imagenPath)
+                              ? NetworkImage('$baseUrl${plato.imagenPath}')
                               : null,
                           child: plato.imagenPath.isEmpty
                               ? Text(plato.nombre[0])
