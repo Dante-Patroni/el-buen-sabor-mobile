@@ -64,8 +64,6 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
   /// Lógica para abrir el modal (igual que antes)
   void _abrirDetallePlato(
       BuildContext context, Plato plato, int stockDisponible) async {
-    print(
-        "👉 Tap en plato: ${plato.nombre}. Stock: $stockDisponible. Ilimitado: ${plato.stock.esIlimitado}");
 
     if (stockDisponible <= 0 && !plato.stock.esIlimitado) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
