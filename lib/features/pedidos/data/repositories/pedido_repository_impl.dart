@@ -92,7 +92,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
   @override
   Future<List<Rubro>> getRubros() async {
     try {
-      final url = Uri.parse('$_baseUrl/rubros/jerarquia');
+      final url = Uri.parse('$_baseUrl/rubros');
       final response = await http.get(url, headers: await _getAuthHeaders());
 
       if (response.statusCode == 200) {
