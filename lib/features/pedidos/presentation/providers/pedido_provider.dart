@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/pedido.dart';
 import '../../domain/models/plato.dart';
+import '../../domain/models/rubro_model.dart';
 import '../../domain/repositories/pedido_repository.dart';
 
 /// **PedidoProvider**
@@ -32,8 +33,12 @@ class PedidoProvider extends ChangeNotifier {
   /// El Catálogo completo de productos disponibles, descargado del servidor.
   List<Plato> menuPlatos = [];
 
+  // ✅ Nueva Lista de Rubros (Jerarquía)
+  List<Rubro> _listaRubros = [];
+  List<Rubro> get listaRubros => _listaRubros;
+
   // ⚙️ Configuración del Contexto Actual
-  String mesaSeleccionada = "Mesa 4";
+  String mesaSeleccionada = "1";
   String clienteActual = "Cliente Anónimo";
 
   // 🔄 Estado de Carga y Errores (Feedback para el usuario)
@@ -87,7 +92,12 @@ class PedidoProvider extends ChangeNotifier {
       final menu = await pedidoRepository.getMenu();
       menuPlatos = menu;
 
-      // B. Cargar el Historial de Pedidos (Para ver qué pidieron antes)
+      // B. Cargar Rubros (Nuevo)
+      final rubrosBackend = await pedidoRepository.getRubros();
+      _listaRubros = rubrosBackend;
+      debugPrint("🌳 Rubros cargados: ${_listaRubros.length}");
+
+      // C. Cargar el Historial de Pedidos (Para ver qué pidieron antes)
       final pedidosBackend = await pedidoRepository.getPedidos();
       listaPedidos = pedidosBackend;
     } catch (e) {

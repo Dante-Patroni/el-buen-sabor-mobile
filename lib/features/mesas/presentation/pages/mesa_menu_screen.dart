@@ -5,18 +5,98 @@ import 'package:provider/provider.dart';
 import 'package:el_buen_sabor_app/features/pedidos/presentation/pages/menu_moderno_page.dart';
 import 'package:el_buen_sabor_app/features/mesas/presentation/pages/ver_pedido_mesa_screen.dart';
 import 'package:el_buen_sabor_app/core/services/storage_service.dart';
+// IMPORTS LOGIN Y CONFIG
+import 'package:el_buen_sabor_app/features/auth/presentation/pages/login_page.dart';
+import '../../../../core/config/app_config.dart';
 
 // IMPORTS PARA HTTP
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class MesaMenuScreen extends StatelessWidget {
+class MesaMenuScreen extends StatefulWidget {
   final MesaUiModel mesa;
 
-  // Idealmente esto debería venir de un archivo de configuración, pero está bien aquí por ahora
-  final String baseUrl = "http://192.168.18.3:3000/api";
-
   const MesaMenuScreen({super.key, required this.mesa});
+
+  @override
+  State<MesaMenuScreen> createState() => _MesaMenuScreenState();
+}
+
+class _MesaMenuScreenState extends State<MesaMenuScreen> {
+  // ✅ Usamos la Configuración Central
+  final String baseUrl = AppConfig.apiBaseUrl;
+
+  late MesaUiModel _mesaActual;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mesaActual = widget.mesa;
+    _refrescarDatosMesa(); // Refrescar al entrar por si acaso
+  }
+
+  // 🔄 REFRESCAR DATOS (Para ver el Total actualizado)
+  Future<void> _refrescarDatosMesa() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final storage = StorageService();
+      final token = await storage.getToken();
+
+      final url = Uri.parse('$baseUrl/mesas');
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      });
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        // Buscamos nuestra mesa en la lista
+        final mesaData = data.firstWhere(
+            (m) => m['id'].toString() == widget.mesa.id.toString(),
+            orElse: () => null);
+
+        if (mesaData != null && mounted) {
+          setState(() {
+            // Actualizamos solo lo importante (Total y Estado)
+            final totalNum =
+                double.tryParse(mesaData['totalActual'].toString()) ?? 0.0;
+            final estadoStr = mesaData['estado'] ?? 'libre';
+
+            // Mapeo manual simple para actualizar la vista
+            _mesaActual = MesaUiModel(
+              id: _mesaActual.id,
+              numero: _mesaActual.numero,
+              estado: estadoStr,
+              totalActual: totalNum,
+              mozoAsignado:
+                  _mesaActual.mozoAsignado, // Mantenemos el mozo visual
+            );
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error refrescando mesa: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // 🔴 LOGOUT FUNCIONAL
+  void _logout(BuildContext context) async {
+    final storage = StorageService();
+    await storage.deleteToken(); // 1. Borrar token
+
+    if (!context.mounted) return;
+
+    // 2. Volver al Login y borrar historial
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (route) => false,
+    );
+  }
 
   // ---------------------------------------------------------
   // 🟢 LÓGICA DE CIERRE DE MESA (Backend + Simulación)
@@ -28,7 +108,7 @@ class MesaMenuScreen extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: const Text("Confirmar Cierre"),
         content: Text(
-            "¿Desea cerrar la Mesa ${mesa.numero} y cobrar \$${mesa.totalActual}?"),
+            "¿Desea cerrar la Mesa ${_mesaActual.numero} y cobrar \$${_mesaActual.totalActual?.toStringAsFixed(0)}?"),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -80,7 +160,7 @@ class MesaMenuScreen extends StatelessWidget {
           "Authorization": "Bearer $token",
         },
         body: jsonEncode({
-          "mesaId": mesa.id,
+          "mesaId": _mesaActual.id,
         }),
       );
 
@@ -152,6 +232,12 @@ class MesaMenuScreen extends StatelessWidget {
           ),
         );
 
+        // 🔄 REFRESCAR EL DATOS DE PEDIDOS (Para que desaparezcan los pagados)
+        if (context.mounted) {
+          Provider.of<PedidoProvider>(context, listen: false)
+              .inicializarDatos();
+        }
+
         // 5. Volver al mapa de mesas (y recargar)
         Navigator.pop(context, true);
       } else {
@@ -180,113 +266,143 @@ class MesaMenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Mesa ${mesa.numero}"),
+        title: Text("Mesa ${_mesaActual.numero}"),
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
+        actions: [
+          // 🚪 BOTÓN DE LOGOUT
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: "Cerrar Sesión",
+            onPressed: () => _logout(context),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // TARJETA DE RESUMEN
-            Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const Icon(Icons.receipt_long,
-                        size: 50, color: Colors.orange),
-                    const SizedBox(height: 10),
-                    Text(
-                      "Total Actual",
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+      body: RefreshIndicator(
+        // 👈 Pull to Refresh Extra
+        onRefresh: _refrescarDatosMesa,
+        child: SingleChildScrollView(
+          // Necesario para RefreshIndicator
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // TARJETA DE RESUMEN
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.receipt_long,
+                            size: 50, color: Colors.orange),
+                        const SizedBox(height: 10),
+                        Text(
+                          "Total Actual",
+                          style:
+                              TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        ),
+                        Text(
+                          "\$${_mesaActual.totalActual?.toStringAsFixed(0) ?? '0'}",
+                          style: const TextStyle(
+                              fontSize: 32, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 5),
+                        Text("Mozo: ${_mesaActual.mozoAsignado ?? 'Sin mozo'}"),
+                        if (_isLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 10),
+                            child: SizedBox(
+                                height: 15,
+                                width: 15,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                      ],
                     ),
-                    Text(
-                      "\$${mesa.totalActual ?? 0.toStringAsFixed(0)}",
-                      style: const TextStyle(
-                          fontSize: 32, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 5),
-                    Text("Mozo: ${mesa.mozoAsignado}"),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-            // BOTÓN 1: HACER PEDIDO
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                backgroundColor: Colors.blue.shade700,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                final pedidoProvider =
-                    Provider.of<PedidoProvider>(context, listen: false);
-
-                // ✅ Usamos el NÚMERO visual para coincidir con el backend
-                pedidoProvider.iniciarPedido(mesa.numero.toString());
-
-                pedidoProvider.setCliente("Mesa ${mesa.numero}");
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MenuModernoPage(
-                        idMesa: mesa.id, numeroMesa: mesa.numero.toString()),
+                // BOTÓN 1: HACER PEDIDO
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
                   ),
-                );
-              },
-              icon: const Icon(Icons.restaurant_menu),
-              label: const Text("HACER PEDIDO / VER CARTA",
-                  style: TextStyle(fontSize: 18)),
-            ),
+                  onPressed: () {
+                    final pedidoProvider =
+                        Provider.of<PedidoProvider>(context, listen: false);
 
-            const SizedBox(height: 20),
+                    // ✅ Usamos el NÚMERO visual para coincidir con el backend
+                    pedidoProvider.iniciarPedido(_mesaActual.numero.toString());
 
-            // BOTÓN EXTRA: VER PEDIDO
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                backgroundColor: Colors.teal.shade600,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VerPedidoMesaScreen(
-                      mesaId: mesa.id,
-                      mesaNumero: mesa.numero,
-                    ),
+                    pedidoProvider.setCliente("Mesa ${_mesaActual.numero}");
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MenuModernoPage(
+                            idMesa: _mesaActual.id,
+                            numeroMesa: _mesaActual.numero.toString()),
+                      ),
+                    ).then((_) {
+                      // 👇 CRUCIAL: AL VOLVER, REFRESCAR EL TOTAL
+                      _refrescarDatosMesa();
+                    });
+                  },
+                  icon: const Icon(Icons.restaurant_menu),
+                  label: const Text("HACER PEDIDO / VER CARTA",
+                      style: TextStyle(fontSize: 18)),
+                ),
+
+                const SizedBox(height: 20),
+
+                // BOTÓN EXTRA: VER PEDIDO
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.teal.shade600,
+                    foregroundColor: Colors.white,
                   ),
-                );
-              },
-              icon: const Icon(Icons.visibility),
-              label: const Text("VER PEDIDO EN CURSO",
-                  style: TextStyle(fontSize: 18)),
-            ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VerPedidoMesaScreen(
+                          mesaId: _mesaActual.id,
+                          mesaNumero: _mesaActual.numero,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.visibility),
+                  label: const Text("VER PEDIDO EN CURSO",
+                      style: TextStyle(fontSize: 18)),
+                ),
 
-            const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-            // BOTÓN 2: CERRAR MESA CONECTADO
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                backgroundColor: Colors.red.shade700,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                _cerrarMesaBackend(context);
-              },
-              icon: const Icon(Icons.point_of_sale),
-              label: const Text("CERRAR MESA Y COBRAR",
-                  style: TextStyle(fontSize: 18)),
+                // BOTÓN 2: CERRAR MESA CONECTADO
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.red.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    _cerrarMesaBackend(context);
+                  },
+                  icon: const Icon(Icons.point_of_sale),
+                  label: const Text("CERRAR MESA Y COBRAR",
+                      style: TextStyle(fontSize: 18)),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

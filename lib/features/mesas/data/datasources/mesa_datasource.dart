@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../../../core/config/app_config.dart'; // 👈 Importamos Config Central
 import '../../../../core/services/storage_service.dart'; // 👈 Importamos la Caja Fuerte
 import '../models/mesa_model.dart';
 
 class MesaDataSource {
   // ⚠️ Tu IP local correcta
-  final String baseUrl = 'http://192.168.18.3:3000/api/mesas';
+  final String baseUrl = '${AppConfig.apiBaseUrl}/mesas';
 
   // Instancia del servicio de almacenamiento
   final StorageService _storage = StorageService();

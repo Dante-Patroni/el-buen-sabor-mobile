@@ -3,19 +3,19 @@ import 'package:el_buen_sabor_app/features/pedidos/presentation/providers/pedido
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-const String baseUrl = 'http://192.168.18.3:3000';
+import '../../../../core/config/app_config.dart';
+
+// const String baseUrl = 'http://192.168.18.3:3000'; // Eliminado
 
 class VerPedidoMesaScreen extends StatefulWidget {
   final int mesaId;
   final int mesaNumero;
-  
 
   const VerPedidoMesaScreen({
     super.key,
     required this.mesaId,
     required this.mesaNumero,
   });
-  
 
   @override
   State<VerPedidoMesaScreen> createState() => _VerPedidoMesaScreenState();
@@ -43,12 +43,12 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Filtramos los pedidos que pertenecen a esta mesa
+          // Filtramos los pedidos que pertenecen a esta mesa y NO están pagados
           final pedidosMesa = provider.listaPedidos.where((p) {
-            
             // ✅ CORRECCIÓN: Usamos mesaNumero para que coincida con lo guardado
-            return p.mesa == widget.mesaNumero.toString(); 
-
+            final esMesa = p.mesa == widget.mesaNumero.toString();
+            final noPagado = p.estado != EstadoPedido.pagado;
+            return esMesa && noPagado;
           }).toList();
 
           if (pedidosMesa.isEmpty) {
@@ -94,7 +94,8 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundImage: plato.imagenPath.isNotEmpty
-                              ? NetworkImage('$baseUrl${plato.imagenPath}')
+                              ? NetworkImage(
+                                  '${AppConfig.apiBaseUrl.replaceAll("/api", "")}${plato.imagenPath}')
                               : null,
                           child: plato.imagenPath.isEmpty
                               ? Text(plato.nombre[0])
@@ -187,6 +188,7 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
       case EstadoPedido.enPreparacion:
         return Colors.blue;
       case EstadoPedido.entregado:
+      case EstadoPedido.pagado:
         return Colors.green;
       case EstadoPedido.rechazado:
       case EstadoPedido.cancelado:

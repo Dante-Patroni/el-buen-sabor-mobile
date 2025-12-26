@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../../../core/config/app_config.dart'; // ✅ Import Config
 
 // 👇 1. Imports Correctos
 import '../../../../core/services/storage_service.dart'; // Tu servicio de SecureStorage
@@ -9,7 +10,7 @@ import '../../domain/models/mesa_ui_model.dart'; // El modelo que usa la pantall
 class MesaProvider extends ChangeNotifier {
   // 👇 2. Variables de Configuración (Faltaban en tu código)
   // Ajusta la IP si usas celular físico (ej: 192.168.1.X)
-  final String _baseUrl = 'http://192.168.18.3:3000/api/mesas'; 
+  final String _baseUrl = '${AppConfig.apiBaseUrl}/mesas';
   final StorageService _storage = StorageService();
 
   // 👇 3. Estado
@@ -40,13 +41,12 @@ class MesaProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        
+
         // 👇 TRANSFORMACIÓN DE DATOS (Adapter Logic)
-    // ... dentro del map ...
+        // ... dentro del map ...
         _mesas = data.map((itemJson) {
-          
           String? nombreMozo;
-          
+
           // Lógica de Mozo (Más robusta)
           if (itemJson['mozo'] != null && itemJson['mozo'] is Map) {
             final m = itemJson['mozo'];
@@ -55,28 +55,27 @@ class MesaProvider extends ChangeNotifier {
             nombreMozo = itemJson['mozoAsignado'].toString();
           } else {
             // Si está ocupada pero no vino mozo, ponemos un texto por defecto
-            nombreMozo = "Sin Asignar"; 
+            nombreMozo = "Sin Asignar";
           }
 
           // Lógica de Número (Si numero es null, usamos el ID)
           int numeroMesa = 0;
           if (itemJson['numero'] != null) {
-             numeroMesa = int.tryParse(itemJson['numero'].toString()) ?? 0;
+            numeroMesa = int.tryParse(itemJson['numero'].toString()) ?? 0;
           } else {
-             // Fallback: Si numero es null, usamos el ID
-             numeroMesa = itemJson['id']; 
+            // Fallback: Si numero es null, usamos el ID
+            numeroMesa = itemJson['id'];
           }
 
           return MesaUiModel(
             id: itemJson['id'],
             numero: numeroMesa, // 👈 Usamos la variable calculada arriba
             estado: itemJson['estado'] ?? 'libre',
-            totalActual: double.tryParse((itemJson['totalActual'] ?? 0).toString()),
+            totalActual:
+                double.tryParse((itemJson['totalActual'] ?? 0).toString()),
             mozoAsignado: nombreMozo,
           );
-          
         }).toList();
-
       } else {
         _error = "Error cargando mesas";
       }

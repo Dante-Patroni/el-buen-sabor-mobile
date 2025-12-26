@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/config/app_config.dart'; // ✅ Import Config
 import '../../domain/models/plato.dart';
 
 class DetallePlatoModal extends StatefulWidget {
@@ -18,10 +19,8 @@ class _DetallePlatoModalState extends State<DetallePlatoModal> {
     if (path.isEmpty) return "";
     if (path.startsWith("http")) return path;
 
-    // ⚠️ REEMPLAZA ESTO CON TU IP REAL (ej: 192.168.0.15)
-    const String ipDeTuPC = "192.168.18.3"; 
-
-    return "http://$ipDeTuPC:3000$path".replaceAll("\\", "/");
+    final baseUrl = AppConfig.apiBaseUrl.replaceAll("/api", "");
+    return "$baseUrl$path".replaceAll("\\", "/");
   }
 
   @override
@@ -51,12 +50,12 @@ class _DetallePlatoModalState extends State<DetallePlatoModal> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: SingleChildScrollView( // Para que no tape el teclado
+      child: SingleChildScrollView(
+        // Para que no tape el teclado
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            
             // 👇 2. IMAGEN GRANDE (HERO) AL PRINCIPIO
             if (urlImagen.isNotEmpty) ...[
               ClipRRect(
@@ -68,7 +67,8 @@ class _DetallePlatoModalState extends State<DetallePlatoModal> {
                   errorBuilder: (_, __, ___) => Container(
                     height: 200,
                     color: Colors.grey[200],
-                    child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                    child: const Icon(Icons.broken_image,
+                        size: 50, color: Colors.grey),
                   ),
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;

@@ -2,10 +2,11 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../../core/config/app_config.dart';
 import '../domain/models/usuario.dart';
 
 class AuthRepository {
-  final String _baseUrl = 'http://192.168.18.3:3000/api/usuarios';
+  final String _baseUrl = '${AppConfig.apiBaseUrl}/usuarios';
 
   Future<Map<String, dynamic>> login(String legajo, String password) async {
     try {
@@ -17,12 +18,12 @@ class AuthRepository {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         // Devolvemos un Mapa con el Token y el Usuario ya parseado
         return {
           'success': true,
           'token': data['token'],
-          'usuario': Usuario.fromJson(data['usuario']), 
+          'usuario': Usuario.fromJson(data['usuario']),
         };
       } else {
         // Si falla, devolvemos el mensaje del backend

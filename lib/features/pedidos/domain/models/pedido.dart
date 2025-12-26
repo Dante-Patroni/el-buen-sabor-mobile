@@ -1,5 +1,12 @@
 // ✅ LINTER HAPPY: Usamos camelCase para los valores del enum
-enum EstadoPedido { pendiente, enPreparacion, rechazado, entregado, cancelado }
+enum EstadoPedido {
+  pendiente,
+  enPreparacion,
+  rechazado,
+  entregado,
+  cancelado,
+  pagado
+}
 
 class Pedido {
   final int? id;

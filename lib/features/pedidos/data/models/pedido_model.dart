@@ -45,8 +45,7 @@ class PedidoModel extends Pedido {
       mesa: (json['mesa'] ?? '').toString(),
       cliente: (json['cliente'] ?? '').toString(),
       platoId: _parsePlatoId(json), // ✅ Mantenemos tu validador robusto
-      fecha:
-          DateTime.tryParse(
+      fecha: DateTime.tryParse(
             json['fecha']?.toString() ?? json['createdAt']?.toString() ?? "",
           ) ??
           DateTime.now(),
@@ -117,6 +116,7 @@ class PedidoModel extends Pedido {
 
     if (estadoString == 'en_preparacion') return EstadoPedido.enPreparacion;
     if (estadoString == 'enpreparacion') return EstadoPedido.enPreparacion;
+    if (estadoString == 'pagado') return EstadoPedido.pagado;
 
     try {
       return EstadoPedido.values.firstWhere(

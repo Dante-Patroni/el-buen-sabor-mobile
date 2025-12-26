@@ -6,12 +6,14 @@ import 'package:sqflite/sqflite.dart';
 // 👇 Importamos el servicio de seguridad y el DB Helper
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/database/db_helper.dart';
+import '../../../../core/config/app_config.dart';
 
 import '../../domain/models/pedido.dart';
 import '../../domain/models/plato.dart';
 import '../../domain/repositories/pedido_repository.dart';
 import '../models/pedido_model.dart';
 import '../models/plato_model.dart';
+import '../../domain/models/rubro_model.dart'; // ✅ Importamos el nuevo modelo
 
 /// **PedidoRepositoryImpl**
 ///
@@ -25,7 +27,7 @@ class PedidoRepositoryImpl implements PedidoRepository {
 
   // ⚠️ Tu IP: Asegúrate de que esta IP sea accesible desde tu emulador o dispositivo real.
   // En Android Emulator usa '10.0.2.2' en lugar de localhost, o la IP de tu PC (192.168.x.x) si es un dispositivo físico.
-  static const String _baseUrl = 'http://192.168.18.3:3000/api';
+  static const String _baseUrl = AppConfig.apiBaseUrl;
 
   /// **Helper Privado: _getAuthHeaders**
   /// Recupera el Token JWT guardado en el almacenamiento seguro y lo prepara para enviarlo
@@ -77,6 +79,31 @@ class PedidoRepositoryImpl implements PedidoRepository {
       debugPrint("⚠️ Error Menu Online ($e). Usando modo offline.");
       // Fallback a base de datos local
       return await _getLocalMenu();
+    }
+  }
+
+  // ===========================================================================
+  // 🌳 GET RUBROS (Jerarquía)
+  // ===========================================================================
+
+  // Future<List<Rubro>> getRubros() async { ... } definimos esto en la interfaz primero?
+  // No, Dart es flexible, pero lo ideal es agregarlo a la interfaz abstracta.
+  // Por ahora lo metemos directo aquí y luego actualizamos la interfaz si hace falta.
+  @override
+  Future<List<Rubro>> getRubros() async {
+    try {
+      final url = Uri.parse('$_baseUrl/rubros/jerarquia');
+      final response = await http.get(url, headers: await _getAuthHeaders());
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList = jsonDecode(response.body);
+        return jsonList.map((j) => Rubro.fromJson(j)).toList();
+      } else {
+        throw Exception('Error cargando rubros: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint("⚠️ Error cargando rubros: $e");
+      return []; // Retornamos lista vacía en vez de romper todo
     }
   }
 
@@ -154,6 +181,8 @@ class PedidoRepositoryImpl implements PedidoRepository {
         return EstadoPedido.rechazado;
       case 'cancelado':
         return EstadoPedido.cancelado;
+      case 'pagado':
+        return EstadoPedido.pagado;
       default:
         return EstadoPedido.pendiente;
     }
