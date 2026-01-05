@@ -1,0 +1,132 @@
+name: Flutter CI/CD
+
+# 🎯 CUÁNDO SE EJECUTA ESTE WORKFLOW
+# - En cada push a main o develop
+# - En cada Pull Request
+# - Manualmente desde GitHub Actions
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Permite ejecutar manualmente
+
+# 🔧 JOBS (Trabajos a ejecutar)
+jobs:
+  # ============================================================================
+  # 📊 JOB 1: ANÁLISIS Y TESTS
+  # ============================================================================
+  test:
+    name: Análisis y Tests
+    runs-on: ubuntu-latest  # Sistema operativo donde se ejecuta
+    
+    steps:
+      # PASO 1: Descargar el código del repositorio
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      # PASO 2: Instalar Flutter
+      - name: 🔧 Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'  # Versión de Flutter
+          channel: 'stable'           # Canal estable
+      
+      # PASO 3: Verificar instalación de Flutter
+      - name: ✅ Verificar Flutter
+        run: flutter --version
+      
+      # PASO 4: Instalar dependencias
+      - name: 📦 Instalar dependencias
+        run: flutter pub get
+      
+      # PASO 5: Generar mocks para tests
+      - name: 🎭 Generar mocks
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+      
+      # PASO 6: Análisis estático del código
+      - name: 🔍 Análisis estático (flutter analyze)
+        run: flutter analyze
+      
+      # PASO 7: Ejecutar todos los tests
+      - name: 🧪 Ejecutar tests
+        run: flutter test --coverage
+      
+      # PASO 8: Subir reporte de cobertura a Codecov (opcional)
+      - name: 📊 Subir cobertura a Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false  # No fallar si Codecov falla
+      
+      # PASO 9: Generar reporte de cobertura HTML
+      - name: 📈 Generar reporte HTML de cobertura
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov
+          genhtml coverage/lcov.info -o coverage/html
+      
+      # PASO 10: Subir reporte como artifact
+      - name: 📤 Subir reporte de cobertura
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/html
+
+  # ============================================================================
+  # 🏗️ JOB 2: BUILD APK (Solo en push a main)
+  # ============================================================================
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    needs: test  # Solo se ejecuta si los tests pasan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+      
+      - name: 📦 Instalar dependencias
+        run: flutter pub get
+      
+      - name: 🏗️ Build APK
+        run: flutter build apk --release
+      
+      - name: 📤 Subir APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+# ============================================================================
+# 📝 EXPLICACIÓN DETALLADA
+# ============================================================================
+#
+# ¿QUÉ HACE ESTE ARCHIVO?
+# Este archivo configura CI/CD (Integración Continua / Despliegue Continuo)
+# para tu proyecto Flutter. Cada vez que haces push o creas un PR, GitHub
+# automáticamente:
+# 1. Ejecuta flutter analyze (busca errores)
+# 2. Ejecuta todos los tests
+# 3. Genera reporte de cobertura
+# 4. (Opcional) Compila el APK
+#
+# ¿POR QUÉ ES IMPORTANTE?
+# - Detecta errores antes de que lleguen a producción
+# - Asegura que los tests siempre pasen
+# - Genera reportes automáticos
+# - Demuestra profesionalismo en la tesis
+#
+# ¿CÓMO SE USA?
+# 1. Crear carpeta: .github/workflows/
+# 2. Guardar este archivo como: flutter-ci.yml
+# 3. Hacer commit y push
+# 4. Ver resultados en: GitHub → Actions
+#
+# ============================================================================

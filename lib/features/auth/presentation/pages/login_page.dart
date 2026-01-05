@@ -12,13 +12,13 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController();
+  final _legajoController = TextEditingController();
   final _passController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);//|Obtengo una referencia al AuthProvider 
 
     return Scaffold(
       backgroundColor: Colors.orange.shade50,
@@ -47,12 +47,13 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 40),
 
-                // EMAIL
+                // Widget de formulario
+                // LEGAJO
                 TextFormField(
-                  controller: _emailController,
+                  controller: _legajoController,
                   decoration: const InputDecoration(
                     labelText: "Legajo",
-                    prefixIcon: Icon(Icons.email),
+                    prefixIcon: Icon(Icons.badge),
                     border: OutlineInputBorder(),
                     filled: true,
                     fillColor: Colors.white,
@@ -61,6 +62,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 16),
 
+                //WIDGET DE FORMULARIO
                 // PASSWORD
                 TextFormField(
                   controller: _passController,
@@ -99,12 +101,17 @@ class _LoginPageState extends State<LoginPage> {
                       backgroundColor: Colors.deepOrange,
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: authProvider.isLoading
+
+                    // Lógica del botón al AuthProvider
+                    onPressed: authProvider.isLoading //indica si está en proceso de login
                         ? null
                         : () async {
                             if (_formKey.currentState!.validate()) {
+
+                              // Llamada al método login del AuthProvider para comunicarme con el backend
+                              //a travez de AuthRepository
                               final exito = await authProvider.login(
-                                _emailController.text.trim(),
+                                _legajoController.text.trim(),
                                 _passController.text.trim(),
                               );
 

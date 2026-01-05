@@ -1,11 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// Imports de tus capas
+
+// ===============================
+// 🔐 AUTENTICACIÓN
+// ===============================
+// Se usa para:
+// - obtener el mozo logueado
+// - cerrar sesión
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../features/auth/presentation/pages/login_page.dart';
-import '../providers/mesa_provider.dart'; // 👈 Asegúrate de este import
+
+// ===============================
+// 🍽️ MESAS / SALÓN
+// ===============================
+import '../providers/mesa_provider.dart';
 import '../../domain/models/mesa_ui_model.dart';
 import 'mesa_menu_screen.dart';
+
+/// ============================================================================
+/// 🖥️ PANTALLA: SalonMesasScreen
+/// ============================================================================
+///
+/// RESPONSABILIDADES:
+/// - Mostrar el estado del salón (mesas libres / ocupadas)
+/// - Capturar la intención del usuario (tap sobre una mesa)
+/// - Disparar casos de uso a través del Provider
+/// - Gestionar navegación entre pantallas
+///
+/// NOTAS DE ARQUITECTURA:
+/// - Esta pantalla NO conoce el backend
+/// - NO realiza llamadas HTTP
+/// - NO maneja tokens ni seguridad
+///
+/// PATRÓN:
+/// - StatefulWidget (por ciclo de vida, no por lógica de negocio)
+/// ============================================================================
 class SalonMesasScreen extends StatefulWidget {
   const SalonMesasScreen({super.key});
 
@@ -15,23 +44,43 @@ class SalonMesasScreen extends StatefulWidget {
 
 class _SalonMesasScreenState extends State<SalonMesasScreen> {
 
+  // ==========================================================================
+  // 🚀 CICLO DE VIDA
+  // ==========================================================================
+
   @override
   void initState() {
     super.initState();
-    // ⚡ AL INICIAR: Pedimos la lista REAL al Backend
-    // Usamos addPostFrameCallback para evitar errores de construcción
+
+    // 📌 Al iniciar la pantalla:
+    // Se dispara el caso de uso "Cargar Mesas"
+    //
+    // Usamos addPostFrameCallback para:
+    // - evitar errores de contexto
+    // - asegurarnos de que el widget ya esté montado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<MesaProvider>(context, listen: false).cargarMesas();
     });
   }
 
-  // Lógica al tocar una mesa
+  // ==========================================================================
+  // 🖱️ INTERACCIÓN: TOQUE SOBRE UNA MESA
+  // ==========================================================================
+
+  /// Decide qué hacer cuando el usuario toca una mesa.
+  ///
+  /// - Si está libre → inicia flujo de apertura
+  /// - Si está ocupada → navega al menú de la mesa
+  ///
+  /// NOTA:
+  /// La UI NO valida reglas de negocio.
+  /// Solo reacciona al estado recibido.
   Future<void> _onMesaTap(MesaUiModel mesa) async {
     if (mesa.estado == 'libre') {
       _mostrarDialogoAbrir(mesa);
     } else {
-      // ✅ Si está ocupada, vamos al Menú Estilo Toast
-      // Usamos 'await' para esperar a que el usuario termine de hacer cosas en el menú
+      // Navegamos al menú de la mesa ocupada
+      // await → esperamos a que el usuario vuelva
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -39,22 +88,33 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
         ),
       );
 
-      // 🔄 AL VOLVER: Recargamos las mesas
-      // Por si el usuario cerró la mesa o cambió el total desde el menú
+      // 🔄 Al volver, sincronizamos estado con el backend
       if (mounted) {
         Provider.of<MesaProvider>(context, listen: false).cargarMesas();
       }
     }
   }
 
-  // A. ABRIR MESA (Conectado al Backend)
+  // ==========================================================================
+  // 🔓 CASO DE USO: ABRIR MESA
+  // ==========================================================================
+
+  /// Muestra un diálogo de confirmación y,
+  /// si el usuario acepta, ejecuta el caso de uso "Abrir Mesa".
+  ///
+  /// Este método:
+  /// - pertenece a la UI
+  /// - NO abre mesas directamente
+  /// - delega la ejecución al Provider
   void _mostrarDialogoAbrir(MesaUiModel mesa) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final mesaProvider = Provider.of<MesaProvider>(context, listen: false);
-    
+
+    // Obtenemos identidad del mozo desde el contexto autenticado
     final nombreMozo = authProvider.usuario?.nombre ?? "Mozo";
     final idMozo = authProvider.usuario?.id;
 
+    // Seguridad defensiva
     if (idMozo == null) return;
 
     showDialog(
@@ -63,40 +123,46 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
         title: Text("¿Abrir Mesa ${mesa.numero}?"),
         content: Text("Se asignará a: $nombreMozo"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx); // Cerramos el diálogo
-              
-              // 1. Backend
+
+              // 1️⃣ Ejecutamos el caso de uso en el Provider
               final exito = await mesaProvider.ocuparMesa(mesa.id, idMozo);
-              
+
               if (mounted && exito) {
-                 // Objeto temporal para no esperar recarga
-                  final mesaActualizada = MesaUiModel(
-                    id: mesa.id,
-                    numero: mesa.numero,
-                    estado: 'ocupada',
-                    mozoAsignado: nombreMozo,
-                    totalActual: 0.0
-                  );
 
-                  // 2. Navegamos y ESPERAMOS (await) a que vuelva
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MesaMenuScreen(mesa: mesaActualizada),
-                    ),
-                  );
+                // 2️⃣ Creamos un modelo temporal para UX inmediata
+                // El backend sigue siendo la fuente de verdad
+                final mesaActualizada = MesaUiModel(
+                  id: mesa.id,
+                  numero: mesa.numero,
+                  estado: 'ocupada',
+                  mozoAsignado: nombreMozo,
+                  totalActual: 0.0,
+                );
 
-                  // 3. Al volver, recargamos el mapa por seguridad
-                  if (mounted) {
-                     mesaProvider.cargarMesas();
-                  }
+                // 3️⃣ Navegamos al menú y esperamos a que el usuario vuelva
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MesaMenuScreen(mesa: mesaActualizada),
+                  ),
+                );
+
+                // 4️⃣ Al regresar, sincronizamos nuevamente con backend
+                if (mounted) {
+                  mesaProvider.cargarMesas();
+                }
               } else if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Error al abrir la mesa")),
-                  );
+                // Manejo de error simple para UX
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Error al abrir la mesa")),
+                );
               }
             },
             child: const Text("Abrir Mesa"),
@@ -106,6 +172,9 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
     );
   }
 
+  // ==========================================================================
+  // 🖼️ UI PRINCIPAL
+  // ==========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -117,10 +186,14 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
         title: Column(
           children: [
             const Text("Salón Principal"),
-            Text("Turno: $nombreMozo", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w300)),
+            Text(
+              "Turno: $nombreMozo",
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w300),
+            ),
           ],
         ),
         actions: [
+          // Logout: responsabilidad de la UI
           IconButton(
             icon: const Icon(Icons.exit_to_app),
             onPressed: () {
@@ -129,32 +202,38 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
                 MaterialPageRoute(builder: (_) => const LoginPage()),
               );
             },
-          )
+          ),
         ],
       ),
-      // 👇 CONSUMER: Aquí ocurre la magia. Escucha al Provider.
+
+      // ==========================================================================
+      // 👂 CONSUMER: UI REACTIVA AL ESTADO DEL PROVIDER
+      // ==========================================================================
+
       body: Consumer<MesaProvider>(
         builder: (context, mesaProvider, child) {
-          
-          // 1. Cargando...
+
+          // 1️⃣ Estado: Cargando
           if (mesaProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Error
+          // 2️⃣ Estado: Error
           if (mesaProvider.error.isNotEmpty) {
-            return Center(child: Text(mesaProvider.error)); // Muestra si falló la conexión
+            return Center(child: Text(mesaProvider.error));
           }
 
-          // 3. Lista Vacía (Si no ejecutaste el SQL Insert, verás esto o solo 1 mesa)
+          // 3️⃣ Estado: Sin datos
           if (mesaProvider.mesas.isEmpty) {
-            return const Center(child: Text("No hay mesas registradas en el sistema"));
+            return const Center(
+              child: Text("No hay mesas registradas en el sistema"),
+            );
           }
 
-          // 4. GRILLA REAL
+          // 4️⃣ Estado: Datos disponibles
           return GridView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: mesaProvider.mesas.length, // Usa la cantidad REAL de la BD
+            itemCount: mesaProvider.mesas.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 16,
@@ -175,17 +254,30 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
   }
 }
 
-// Widget Tarjeta Visual (Sin cambios lógicos, solo visuales)
+/// ============================================================================
+/// 🎨 COMPONENTE VISUAL: TARJETA DE MESA
+/// ============================================================================
+///
+/// Widget puramente visual.
+/// - No conoce Providers
+/// - No ejecuta lógica
+/// - Solo refleja el estado recibido
 class _MesaCard extends StatelessWidget {
   final MesaUiModel mesa;
   final VoidCallback onTap;
-  const _MesaCard({required this.mesa, required this.onTap});
+
+  const _MesaCard({
+    required this.mesa,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final bool esOcupada = mesa.estado == 'ocupada';
-    final Color colorFondo = esOcupada ? Colors.orange.shade800 : Colors.grey.shade300;
-    final Color colorTexto = esOcupada ? Colors.white : Colors.black87;
+    final Color colorFondo =
+        esOcupada ? Colors.orange.shade800 : Colors.grey.shade300;
+    final Color colorTexto =
+        esOcupada ? Colors.white : Colors.black87;
 
     return Material(
       color: colorFondo,
@@ -199,16 +291,22 @@ class _MesaCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.table_restaurant_rounded, size: 40, color: colorTexto),
+              Icon(Icons.table_restaurant_rounded,
+                  size: 40, color: colorTexto),
               const SizedBox(height: 8),
               Text(
-                "Mesa ${mesa.numero}", 
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorTexto)
+                "Mesa ${mesa.numero}",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorTexto,
+                ),
               ),
               const SizedBox(height: 4),
               if (esOcupada)
-                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(10),
@@ -221,8 +319,11 @@ class _MesaCard extends StatelessWidget {
                 )
               else
                 Text(
-                  "LIBRE", 
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600)
+                  "LIBRE",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
             ],
           ),
