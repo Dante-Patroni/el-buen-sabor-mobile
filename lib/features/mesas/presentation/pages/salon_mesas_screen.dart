@@ -14,7 +14,8 @@ import '../../../../features/auth/presentation/pages/login_page.dart';
 // 🍽️ MESAS / SALÓN
 // ===============================
 import '../providers/mesa_provider.dart';
-import '../../domain/models/mesa_ui_model.dart';
+import '../../presentation/models/mesa_ui_model.dart';
+
 import 'mesa_menu_screen.dart';
 
 /// ============================================================================

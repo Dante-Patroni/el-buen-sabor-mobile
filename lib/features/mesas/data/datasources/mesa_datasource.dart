@@ -64,4 +64,73 @@ class MesaDataSource {
       rethrow;
     }
   }
+
+  // 3. ABRIR / OCUPAR MESA
+Future<void> abrirMesa(int idMesa, int idMozo) async {
+  final url = Uri.parse('$baseUrl/$idMesa/abrir');
+
+  debugPrint("🌐 ABRIENDO MESA: $url");
+
+  try {
+    final response = await http.post(
+      url,
+      headers: await _getAuthHeaders(),// Inyectamos headers con token
+      body: jsonEncode({
+        "idMozo": idMozo,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Error al abrir mesa: ${response.statusCode}');
+    }
+  } catch (e) {
+    rethrow;
+  }
+}
+
+  // 4. CERRAR MESA Y FACTURAR
+  /// 
+  /// **Responsabilidad:** Comunicarse con el backend para cerrar una mesa
+  /// y procesar la facturación de todos sus pedidos.
+  /// 
+  /// **Flujo:**
+  /// 1. Construye la URL del endpoint `/pedidos/cerrar-mesa`
+  /// 2. Obtiene el token de autenticación
+  /// 3. Envía POST con el id de la mesa
+  /// 4. Parsea la respuesta y extrae el total cobrado
+  /// 
+  /// **Arquitectura:** Esta es la capa más baja (DataSource).
+  /// Aquí es donde se hacen las llamadas HTTP reales.
+  /// La UI nunca debería llamar este método directamente.
+  Future<double> cerrarMesaYFacturar(int idMesa) async {
+    // ⚠️ NOTA: Este endpoint está en /pedidos, no en /mesas
+    // porque cierra pedidos, no solo cambia el estado de la mesa
+    final url = Uri.parse('${AppConfig.apiBaseUrl}/pedidos/cerrar-mesa');
+
+    debugPrint("🌐 CERRANDO MESA Y FACTURANDO: $url");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          "mesaId": idMesa,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // El backend devuelve { "totalCobrado": 1234.56 }
+        final totalCobrado = double.tryParse(data['totalCobrado'].toString()) ?? 0.0;
+        return totalCobrado;
+      } else {
+        // Si el servidor responde con error, lanzamos excepción
+        throw Exception('Error al cerrar mesa: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Re-lanzamos la excepción para que la capa superior la maneje
+      rethrow;
+    }
+  }
+
 }
