@@ -17,6 +17,7 @@ jobs:
     - name: 🐦 Instalar Flutter
       uses: subosito/flutter-action@v2
       with:
+        flutter-version: '3.24.0'  # Versión específica para consistencia
         channel: 'stable'
         cache: true
 
