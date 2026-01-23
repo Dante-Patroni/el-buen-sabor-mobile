@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:el_buen_sabor_app/features/pedidos/presentation/pages/menu_moderno_page.dart';
 import 'package:el_buen_sabor_app/features/mesas/presentation/pages/ver_pedido_mesa_screen.dart';
 import 'package:el_buen_sabor_app/core/services/storage_service.dart';
+import 'package:el_buen_sabor_app/features/pedidos/domain/models/pedido.dart';
 // IMPORTS LOGIN
 import 'package:el_buen_sabor_app/features/auth/presentation/pages/login_page.dart';
 // ✅ IMPORT CORRECTO: Usamos el Provider en lugar de HTTP directo
@@ -24,57 +25,25 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   bool _isLoading = false;
 
   @override
-  void initState() {
-    super.initState();
-    _mesaActual = widget.mesa;
-    _refrescarDatosMesa(); // Refrescar al entrar por si acaso
-  }
+  @override
+void initState() {
+  super.initState();
+  _mesaActual = widget.mesa;
 
-  // 🔄 REFRESCAR DATOS (Para ver el Total actualizado)
-  /// 
-  /// **ANTES (INCORRECTO):** Hacía llamadas HTTP directas desde la UI.
-  /// Esto violaba Clean Architecture porque la UI conocía detalles de HTTP.
-  /// 
-  /// **AHORA (CORRECTO):** Usa el MesaProvider que sigue Clean Architecture.
-  /// 
-  /// **Flujo:**
-  /// 1. Obtiene el MesaProvider del contexto
-  /// 2. Llama a `cargarMesas()` que pasa por todas las capas (Provider → Repository → DataSource → API)
-  /// 3. Busca la mesa actualizada en la lista del Provider
-  /// 4. Actualiza el estado local con los datos frescos
-  /// 
-  /// **Ventajas:**
-  /// - ✅ La UI no conoce detalles de HTTP
-  /// - ✅ Reutiliza la lógica existente
-  /// - ✅ Fácil de testear (mock del Provider)
-  /// - ✅ Si cambia el endpoint, solo se modifica el DataSource
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _refrescarDatosMesa();
+  });
+}
+
+
   Future<void> _refrescarDatosMesa() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
-      // ✅ CORRECTO: Obtenemos el Provider del contexto
-      final mesaProvider = Provider.of<MesaProvider>(context, listen: false);
-      
-      // ✅ CORRECTO: Usamos el método del Provider que sigue Clean Architecture
-      // Este método internamente llama: Provider → Repository → DataSource → API
-      await mesaProvider.cargarMesas();
-
-      if (mounted) {
-        // Buscamos nuestra mesa en la lista actualizada del Provider
-        final mesaActualizada = mesaProvider.mesas.firstWhere(
-          (m) => m.id == widget.mesa.id,
-          orElse: () => _mesaActual, // Si no la encuentra, mantenemos la actual
-        );
-
-        setState(() {
-          // Actualizamos el estado local con los datos frescos del Provider
-          _mesaActual = mesaActualizada;
-        });
-      }
+      await context.read<MesaProvider>().cargarMesas();
     } catch (e) {
       debugPrint("Error refrescando mesa: $e");
-      // Si hay error, el Provider ya maneja el estado de error internamente
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -97,19 +66,19 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   // ---------------------------------------------------------
   // 🟢 LÓGICA DE CIERRE DE MESA (CORREGIDA - Usa Clean Architecture)
   // ---------------------------------------------------------
-  /// 
+  ///
   /// **ANTES (INCORRECTO):** Hacía llamadas HTTP directas desde la UI.
   /// Esto violaba Clean Architecture porque la UI conocía detalles de HTTP, tokens, URLs.
-  /// 
+  ///
   /// **AHORA (CORRECTO):** Usa el MesaProvider que sigue Clean Architecture.
-  /// 
+  ///
   /// **Flujo:**
   /// 1. Muestra diálogo de confirmación (UI)
   /// 2. Llama a `mesaProvider.cerrarMesaYFacturar()` que pasa por todas las capas
   /// 3. Muestra simulación de facturación (UI)
   /// 4. Refresca datos de pedidos y mesas
   /// 5. Vuelve al salón
-  /// 
+  ///
   /// **Arquitectura:** La UI solo maneja la presentación (diálogos, animaciones).
   /// Toda la lógica de negocio y comunicación con el backend está en el Provider.
   Future<void> _cerrarMesaBackend(BuildContext context) async {
@@ -119,7 +88,7 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
       builder: (context) => AlertDialog(
         title: const Text("Confirmar Cierre"),
         content: Text(
-            "¿Desea cerrar la Mesa ${_mesaActual.numero} y cobrar \$${_mesaActual.totalActual?.toStringAsFixed(0)}?"),
+            "¿Desea cerrar la Mesa ${_mesaActual.numero} y cobrar \$${_mesaActual.totalActual.toStringAsFixed(0)}"),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -155,7 +124,8 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
 
       // ✅ CORRECTO: Usamos el método del Provider que sigue Clean Architecture
       // Este método internamente llama: Provider → Repository → DataSource → API
-      final totalCobrado = await mesaProvider.cerrarMesaYFacturar(_mesaActual.id);
+      final totalCobrado =
+          await mesaProvider.cerrarMesaYFacturar(_mesaActual.id);
 
       // 🛑 SAFETY CHECK
       if (!context.mounted) return;
@@ -229,8 +199,7 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
 
       // 🔄 REFRESCAR EL DATOS DE PEDIDOS (Para que desaparezcan los pagados)
       if (context.mounted) {
-        Provider.of<PedidoProvider>(context, listen: false)
-            .inicializarDatos();
+        Provider.of<PedidoProvider>(context, listen: false).inicializarDatos();
       }
 
       // 5. Volver al mapa de mesas (y recargar)
@@ -271,7 +240,8 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // TARJETA DE RESUMEN
+
+                // TARJETA DE RESUMEN**********************************
                 Card(
                   elevation: 4,
                   child: Padding(
@@ -286,10 +256,21 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                           style:
                               TextStyle(fontSize: 16, color: Colors.grey[600]),
                         ),
-                        Text(
-                          "\$${_mesaActual.totalActual?.toStringAsFixed(0) ?? '0'}",
-                          style: const TextStyle(
-                              fontSize: 32, fontWeight: FontWeight.bold),
+                        Consumer<MesaProvider>(
+                          builder: (_, mesaProvider, __) {
+                            final mesa = mesaProvider.mesas.firstWhere(
+                              (m) => m.id == widget.mesa.id,
+                              orElse: () => widget.mesa,
+                            );
+
+                            return Text(
+                              "\$${mesa.totalActual.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(height: 5),
                         Text("Mozo: ${_mesaActual.mozoAsignado ?? 'Sin mozo'}"),
@@ -368,6 +349,48 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
 
                 const SizedBox(height: 20),
 
+                // BOTÓN 1.5: MODIFICAR PEDIDO
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.orange.shade600,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VerPedidoMesaScreen(
+                          mesaId: _mesaActual.id,
+                          mesaNumero: _mesaActual.numero,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.edit),
+                  label: const Text("MODIFICAR PEDIDO",
+                      style: TextStyle(fontSize: 18)),
+                ),
+
+                const SizedBox(height: 20),
+
+                // BOTÓN 1.6: ELIMINAR PEDIDO
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.red.shade500,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    _mostrarDialogoEliminarPedidoCompleto(context);
+                  },
+                  icon: const Icon(Icons.delete),
+                  label: const Text("ELIMINAR PEDIDO",
+                      style: TextStyle(fontSize: 18)),
+                ),
+
+                const SizedBox(height: 20),
+
                 // BOTÓN 2: CERRAR MESA CONECTADO
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -403,6 +426,68 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Entendido"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Dialog para eliminar TODO el pedido de la mesa
+  void _mostrarDialogoEliminarPedidoCompleto(BuildContext context) {
+    final provider = Provider.of<PedidoProvider>(context, listen: false);
+
+    // Obtener todos los IDs de pedidos de esta mesa
+    final pedidosDeMesa = provider.listaPedidos.where((p) {
+      return p.mesa == _mesaActual.numero.toString() &&
+          p.estado != EstadoPedido.pagado;
+    }).toList();
+
+    if (pedidosDeMesa.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No hay pedidos para eliminar"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Eliminar Todo el Pedido"),
+        content: Text(
+            "¿Estás seguro de que deseas eliminar TODOS los ${pedidosDeMesa.length} items del pedido?\n\nSe devolverá el stock."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+
+              // Eliminar cada pedido
+              for (var pedido in pedidosDeMesa) {
+                await provider.borrarPedidoHistorico(pedido.id ?? 0);
+              }
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Pedido eliminado exitosamente"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text(
+              "Eliminar Todo",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

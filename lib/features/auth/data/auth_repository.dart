@@ -17,6 +17,7 @@
 // ============================================================================
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../../core/config/app_config.dart';
 import '../domain/models/usuario.dart';
@@ -128,17 +129,12 @@ class AuthRepository {
       // ✅ RESPUESTA EXITOSA (Status Code 200)
       // -----------------------------------------------------------------------
 
-      if (response.statusCode == 200) {
-        // Decodifica el JSON de la respuesta a un Map de Dart
-        // jsonDecode transforma: '{"token":"xyz"}' → {'token': 'xyz'}
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
 
-        // Construye y retorna el resultado exitoso
-        // Incluye el token JWT y el objeto Usuario parseado
         return {
-          'success': true,
-          'token': data['token'], // Token JWT como String
-          'usuario': Usuario.fromJson(data['usuario']), // Usuario parseado
+          'token': data['token'],
+          'usuario': Usuario.fromJson(data['usuario']),
         };
       }
 
@@ -147,23 +143,14 @@ class AuthRepository {
       // -----------------------------------------------------------------------
 
       else {
-        // Intenta extraer el mensaje de error del backend
-        final errorData = jsonDecode(response.body);
-
-        // Lanza una excepción con el mensaje del backend
-        // Si no hay mensaje, usa uno genérico
-        throw Exception(errorData['mensaje'] ?? 'Error de autenticación');
+        final data = jsonDecode(response.body);
+        // Soportar tanto 'mensaje' (español) como 'message' (inglés)
+        final errorMessage =
+            data['mensaje'] ?? data['message'] ?? 'Error de autenticación';
+        throw Exception(errorMessage);
       }
-    }
-
-    // -------------------------------------------------------------------------
-    // 🌐 MANEJO DE ERRORES DE RED
-    // -------------------------------------------------------------------------
-
-    catch (e) {
-      // Captura cualquier error (red, timeout, JSON inválido, etc.)
-      // y lo relanza con un mensaje más descriptivo
-      throw Exception('Error de conexión: $e');
+    } on SocketException {
+      throw Exception('Error de conexión');
     }
   }
 

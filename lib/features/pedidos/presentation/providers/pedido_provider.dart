@@ -259,4 +259,30 @@ class PedidoProvider extends ChangeNotifier {
       await inicializarDatos();
     }
   }
+
+    /// =========================================================================
+  /// 🔄 MODIFICAR UN PEDIDO COMPLETO
+  /// =========================================================================
+  Future<bool> modificarPedido(int pedidoId, String mesa, List<Pedido> pedidoModificado) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Llamamos al repositorio para actualizar en el servidor
+      await pedidoRepository.modificarPedido(pedidoId, mesa, pedidoModificado);
+
+      // Si tuvo éxito, recargamos el historial de pedidos
+      await inicializarDatos();
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
 }

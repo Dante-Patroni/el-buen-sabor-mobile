@@ -280,6 +280,127 @@ class PedidoRepositoryImpl implements PedidoRepository {
     }
   }
 
+  // ===========================================================================
+  // 🔄 MODIFICAR PEDIDO (PUT Request)
+  // ===========================================================================
+
+  /// **modificarPedido**
+  ///
+  /// Actualiza un pedido existente en el backend.
+  ///
+  /// **Responsabilidad:**
+  /// - Transformar los objetos Dart (`List<Pedido>`) a formato JSON
+  /// - Realizar una petición HTTP PUT al endpoint `/pedidos/modificar`
+  /// - Manejar la respuesta del servidor y propagar errores si es necesario
+  ///
+  /// **Arquitectura:**
+  /// - **Capa de Datos (Data Layer)**: Este método pertenece al Repository
+  /// - **Patrón Repository**: Abstrae la fuente de datos (HTTP, SQLite, etc.)
+  /// - **Separación de Responsabilidades**: La UI no sabe que esto es HTTP
+  ///
+  /// **Flujo de Comunicación:**
+  /// ```
+  /// UI (Modal) -> Provider -> Repository -> Backend API -> MySQL
+  ///                                      <-              <-
+  /// ```
+  ///
+  /// **Parámetros:**
+  /// - `pedidoId`: ID del pedido padre a modificar
+  /// - `mesa`: Número de mesa (String)
+  /// - `pedidoModificado`: Lista actualizada de items del pedido
+  ///
+  /// **Excepciones:**
+  /// - Lanza `Exception` si el servidor responde con error (statusCode != 200/201)
+  /// - Lanza `Exception` si hay problemas de red (timeout, sin conexión)
+  @override
+  Future<void> modificarPedido(
+      int pedidoId, String mesa, List<Pedido> pedidoModificado) async {
+    // **PASO 1: Construir URL del Endpoint**
+    // El backend espera un PUT a /pedidos/modificar
+    final url = Uri.parse('$_baseUrl/pedidos/modificar');
+
+    try {
+      // **PASO 2: Preparar Headers HTTP**
+      // Incluye el token JWT para autenticación y Content-Type para JSON
+      final headers = await _getAuthHeaders();
+
+      // **PASO 3: Serialización de Datos (Dart -> JSON)**
+      // Transformamos la lista de objetos Pedido a un formato que el backend entienda.
+      // Usamos .map() para iterar y crear un Map por cada item.
+      final List<Map<String, dynamic>> listaProductos =
+          pedidoModificado.map((item) {
+        return {
+          "platoId": item.platoId,
+          "cantidad": item.cantidad,
+          "aclaracion": item.aclaracion ?? "",
+        };
+      }).toList();
+
+      // **PASO 4: Construir el Body (Payload)**
+      // Estructura esperada por el backend:
+      // {
+      //   "id": 123,
+      //   "mesa": "2",
+      //   "cliente": "Cliente App",
+      //   "productos": [
+      //     {"platoId": 9, "cantidad": 2, "aclaracion": ""}
+      //   ]
+      // }
+      final Map<String, dynamic> bodyData = {
+        "id": pedidoId,
+        "mesa": mesa,
+        "cliente": "Cliente App",
+        "productos": listaProductos,
+      };
+
+      // **PASO 5: Convertir Map a String JSON**
+      // jsonEncode() serializa el Map a un String JSON válido
+      final String jsonBody = jsonEncode(bodyData);
+      debugPrint("🔄 [PedidoRepo] Modificando pedido $pedidoId: $jsonBody");
+
+      // **PASO 6: Realizar Petición HTTP PUT**
+      // **Conceptos:**
+      // - `http.put()`: Método HTTP para actualizar recursos existentes
+      // - `timeout()`: Límite de tiempo para evitar esperas infinitas
+      // - `await`: Espera la respuesta antes de continuar
+      final response = await http
+          .put(
+            url,
+            headers: headers,
+            body: jsonBody,
+          )
+          .timeout(const Duration(seconds: 10));
+
+      // **PASO 7: Logging de Respuesta (Debug)**
+      // Útil para diagnosticar problemas de persistencia
+      debugPrint("📥 [PedidoRepo] Response Status: ${response.statusCode}");
+      debugPrint("📥 [PedidoRepo] Response Body: ${response.body}");
+
+      // **PASO 8: Validación de Respuesta**
+      // **HTTP Status Codes:**
+      // - 200 OK: Actualización exitosa
+      // - 201 Created: Recurso creado (algunos backends usan esto)
+      // - 4xx: Error del cliente (datos inválidos, autenticación fallida)
+      // - 5xx: Error del servidor (base de datos caída, bug en backend)
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(
+            'Error modificando pedido: ${response.statusCode} - ${response.body}');
+      }
+
+      debugPrint("✅ Pedido $pedidoId modificado y enviado a cocina");
+    } catch (e) {
+      // **PASO 9: Manejo de Excepciones**
+      // Capturamos cualquier error (red, timeout, servidor) y lo propagamos
+      // hacia arriba (Provider -> UI) para que el usuario vea el mensaje
+      debugPrint("❌ Error en modificarPedido: $e");
+      throw Exception('Fallo al modificar: $e');
+    }
+  }
+
+  /// **Enviar Pedido Modificado a Cocina**
+  /// El backend automáticamente maneja cocina, igual que en insertPedido
+  /// Esta función es placeholder por si en el futuro se necesita lógica adicional
+
   @override
   Future<void> updateEstado(int id, EstadoPedido nuevoEstado) async {}
 

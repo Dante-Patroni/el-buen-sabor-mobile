@@ -16,6 +16,7 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import 'package:el_buen_sabor_app/features/auth/data/auth_repository.dart';
 import 'package:el_buen_sabor_app/features/auth/domain/models/usuario.dart';
 
@@ -29,9 +30,8 @@ void main() {
 
   setUp(() {
     mockClient = MockClient();
-    // NOTA: AuthRepository necesita aceptar un cliente HTTP en el constructor
-    // repository = AuthRepository(client: mockClient);
-    repository = AuthRepository();
+    // Inyectar el mock client en el repositorio para testing
+    repository = AuthRepository(client: mockClient);
   });
 
   group('Login Exitoso', () {
@@ -59,7 +59,7 @@ void main() {
       final result = await repository.login('12345', 'password123');
 
       // ASSERT: Verificar el resultado
-      expect(result['success'], true);
+      // Nota: El repositorio no retorna 'success', solo 'token' y 'usuario'
       expect(result['token'], 'fake_jwt_token_12345');
       expect(result['usuario'], isA<Usuario>());
       expect(result['usuario'].nombre, 'Dante');
@@ -194,12 +194,12 @@ void main() {
     });
 
     test('debe manejar error de conexión', () async {
-      // ARRANGE: Simular sin internet
+      // ARRANGE: Simular sin internet (SocketException)
       when(mockClient.post(
         any,
         headers: anyNamed('headers'),
         body: anyNamed('body'),
-      )).thenThrow(Exception('No internet connection'));
+      )).thenThrow(SocketException('No internet connection'));
 
       // ACT & ASSERT
       try {

@@ -10,7 +10,13 @@ abstract class PedidoRepository {
   Future<List<Plato>> getMenu();
   Future<List<Rubro>> getRubros(); // ✅ Nuevo método
 
-  // Estos pueden quedar igual o ajustarse si necesitas borrar items del servidor
+  /// Elimina completamente un pedido por ID
   Future<void> deletePedido(int id);
+
+  /// Actualiza/modifica un pedido completo (cantidad, aclaración, etc)
+/// El backend mantiene el ID original
+Future<void> modificarPedido(int pedidoId, String mesa, List<Pedido> pedidoModificado);
+
+
   Future<void> updateEstado(int id, EstadoPedido nuevoEstado);
 }

@@ -1,11 +1,9 @@
+import 'package:el_buen_sabor_app/features/mesas/presentation/models/mesa_ui_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 
 import 'package:el_buen_sabor_app/features/mesas/domain/models/mesa.dart';
-import 'package:el_buen_sabor_app/features/mesas/domain/repositories/mesa_repository.dart';
 import 'package:el_buen_sabor_app/features/mesas/presentation/providers/mesa_provider.dart';
-import 'package:el_buen_sabor_app/features/mesas/presentation/models/mesa_ui_model.dart';
 
 // 👇 genera MockMesaRepository se pone una sola vez  
 //@GenerateMocks([MesaRepository])

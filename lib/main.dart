@@ -23,6 +23,9 @@ import 'features/pedidos/presentation/providers/pedido_provider.dart';
 import 'features/mesas/presentation/providers/mesa_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/pages/login_page.dart';
+import 'features/mesas/data/datasources/mesa_datasource.dart';
+import 'features/mesas/data/repositories/mesa_repository_impl.dart';
+
 
 /// 🚀 FUNCIÓN MAIN - Punto de entrada de la aplicación
 ///
@@ -44,9 +47,15 @@ void main() {
   // Esto permite compartir la misma instancia en toda la app,
   // evitando múltiples conexiones HTTP y manteniendo consistencia de datos.
   final pedidoRepository = PedidoRepositoryImpl();
+  final mesaDataSource = MesaDataSource();
+final mesaRepository = MesaRepositoryImpl(mesaDataSource);
+
 
   // Ejecuta la aplicación pasando el repositorio como dependencia
-  runApp(ElBuenSaborApp(pedidoRepository: pedidoRepository));
+  runApp(ElBuenSaborApp(
+    pedidoRepository: pedidoRepository,
+    mesaRepository: mesaRepository,
+    ));
 }
 
 /// 📱 WIDGET RAÍZ DE LA APLICACIÓN
@@ -59,19 +68,15 @@ void main() {
 /// - Facilita testing y reutilización de código
 /// - Reduce acoplamiento entre componentes
 class ElBuenSaborApp extends StatelessWidget {
-  /// Repositorio de pedidos inyectado desde main()
-  /// Es opcional (nullable) para permitir testing con mocks
-  final PedidoRepositoryImpl? pedidoRepository;
+  final PedidoRepositoryImpl pedidoRepository;
+  final MesaRepositoryImpl mesaRepository;
 
-  /// Constructor con inyección de dependencias
-  /// - `super.key`: Pasa la key al constructor padre (Widget)
-  /// - `this.pedidoRepository`: Parámetro nombrado opcional
-  const ElBuenSaborApp({super.key, this.pedidoRepository});
+  const ElBuenSaborApp({
+    super.key,
+    required this.pedidoRepository,
+    required this.mesaRepository,
+  });
 
-  /// 🎨 BUILD - Construye el árbol de widgets
-  ///
-  /// Este método se llama cuando Flutter necesita renderizar el widget.
-  /// Retorna el árbol completo de widgets de la aplicación.
   @override
   Widget build(BuildContext context) {
     // 🔄 MULTIPROVIDER - Gestión de Estado Global
@@ -95,12 +100,12 @@ class ElBuenSaborApp extends StatelessWidget {
         // El operador ?? proporciona un valor por defecto si es null
         ChangeNotifierProvider(
           create: (_) => PedidoProvider(
-              pedidoRepository: pedidoRepository ?? PedidoRepositoryImpl()
+              pedidoRepository: pedidoRepository,
               ),
         ),
 
         // 🪑 MesaProvider - Maneja el estado de las mesas del restaurante
-        ChangeNotifierProvider(create: (_) => MesaProvider()),
+        ChangeNotifierProvider(create: (_) => MesaProvider(mesaRepository)),
       ],
 
       // 📲 MATERIALAPP - Configuración de la aplicación

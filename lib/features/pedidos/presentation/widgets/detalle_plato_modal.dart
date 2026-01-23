@@ -4,15 +4,43 @@ import '../../domain/models/plato.dart';
 
 class DetallePlatoModal extends StatefulWidget {
   final Plato plato;
-  const DetallePlatoModal({super.key, required this.plato});
+  // 🆕 NUEVO (opcionales)
+  final int cantidadInicial;
+  final String aclaracionInicial;
+  final String textoBoton;
+
+  const DetallePlatoModal({
+    super.key,
+    required this.plato,
+    this.cantidadInicial = 1,
+    this.aclaracionInicial = "",
+    this.textoBoton = "Agregar",
+  });
 
   @override
   State<DetallePlatoModal> createState() => _DetallePlatoModalState();
 }
 
 class _DetallePlatoModalState extends State<DetallePlatoModal> {
-  int cantidad = 1;
-  final TextEditingController _aclaracionController = TextEditingController();
+  late int cantidad;
+late TextEditingController _aclaracionController;
+
+@override
+void initState() {
+  super.initState();
+  cantidad = widget.cantidadInicial;
+  _aclaracionController =
+      TextEditingController(text: widget.aclaracionInicial);
+}
+
+@override
+  void dispose() {
+    _aclaracionController.dispose();
+    super.dispose();
+  }
+
+
+
 
   // 👇 1. FUNCIÓN PARA CORREGIR LA URL (IP DE LA PC)
   String _construirUrlImagen(String path) {
@@ -23,11 +51,6 @@ class _DetallePlatoModalState extends State<DetallePlatoModal> {
     return "$baseUrl$path".replaceAll("\\", "/");
   }
 
-  @override
-  void dispose() {
-    _aclaracionController.dispose();
-    super.dispose();
-  }
 
   void _incrementar() {
     setState(() => cantidad++);

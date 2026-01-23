@@ -1,3 +1,4 @@
+import 'package:el_buen_sabor_app/features/mesas/presentation/providers/mesa_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 // ✅ CORRECCIÓN 1: Usamos el Provider correcto
@@ -139,8 +140,13 @@ class ConfirmarPedidoScreen extends StatelessWidget {
 
                               if (context.mounted) {
                                 if (exito) {
-                                  // Si el servidor respondió 200 OK
-                                  _mostrarExito(context);
+                                  final mesaProvider =
+                                      context.read<MesaProvider>();
+                                  await mesaProvider.cargarMesas();
+
+                                  if (context.mounted) {
+                                    _mostrarExito(context);
+                                  }
                                 } else {
                                   // Si falló (ej: Error de conexión o stock)
                                   ScaffoldMessenger.of(context)

@@ -47,14 +47,10 @@ void main() {
     mockStorage = MockStorageService();
 
     // Crear AuthProvider con las dependencias mockeadas
-    // NOTA: Necesitarás modificar AuthProvider para aceptar dependencias
-    authProvider = AuthProvider();
-
-    // Inyectar los mocks (esto requiere modificar AuthProvider)
-    // authProvider = AuthProvider(
-    //   repository: mockRepository,
-    //   storage: mockStorage,
-    // );
+    authProvider = AuthProvider(
+      repository: mockRepository,
+      storage: mockStorage,
+    );
   });
 
   // ============================================================================
@@ -94,7 +90,6 @@ void main() {
       // Configurar el mock para retornar datos exitosos
       when(mockRepository.login('12345', 'password123'))
           .thenAnswer((_) async => {
-                'success': true,
                 'token': 'fake_jwt_token',
                 'usuario': usuarioEsperado,
               });
@@ -120,7 +115,6 @@ void main() {
     test('debe cambiar isLoading durante el proceso', () async {
       // ARRANGE
       when(mockRepository.login(any, any)).thenAnswer((_) async => {
-            'success': true,
             'token': 'token',
             'usuario': Usuario(
               id: 1,
@@ -190,7 +184,6 @@ void main() {
     test('debe limpiar usuario y token al hacer logout', () async {
       // ARRANGE: Primero hacer login
       when(mockRepository.login(any, any)).thenAnswer((_) async => {
-            'success': true,
             'token': 'token',
             'usuario': Usuario(
               id: 1,
@@ -227,7 +220,6 @@ void main() {
       });
 
       when(mockRepository.login(any, any)).thenAnswer((_) async => {
-            'success': true,
             'token': 'token',
             'usuario': Usuario(
               id: 1,

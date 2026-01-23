@@ -1,11 +1,11 @@
+import 'package:el_buen_sabor_app/features/mesas/presentation/providers/mesa_provider.dart';
 import 'package:el_buen_sabor_app/features/pedidos/domain/models/pedido.dart';
 import 'package:el_buen_sabor_app/features/pedidos/presentation/providers/pedido_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/config/app_config.dart';
-
-// const String baseUrl = 'http://192.168.18.3:3000'; // Eliminado
+import '../widgets/modificar_pedido_modal.dart';
 
 class VerPedidoMesaScreen extends StatefulWidget {
   final int mesaId;
@@ -25,7 +25,6 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
   @override
   void initState() {
     super.initState();
-    // Opcional: Recargar datos al entrar para asegurar frescura
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<PedidoProvider>(context, listen: false).inicializarDatos();
     });
@@ -43,9 +42,7 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Filtramos los pedidos que pertenecen a esta mesa y NO están pagados
           final pedidosMesa = provider.listaPedidos.where((p) {
-            // ✅ CORRECCIÓN: Usamos mesaNumero para que coincida con lo guardado
             final esMesa = p.mesa == widget.mesaNumero.toString();
             final noPagado = p.estado != EstadoPedido.pagado;
             return esMesa && noPagado;
@@ -69,11 +66,7 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
             );
           }
 
-          // Calcular total local de lo mostrado
           final double totalMesa = pedidosMesa.fold(0.0, (sum, item) {
-            // El backend ya debería mandar el total calculado (cantidad * precio)
-            // pero si total es unitario, multiplicamos.
-            // Revisando modelo: total parece ser el subtotal del item.
             return sum + item.total;
           });
 
@@ -128,20 +121,101 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
                             ),
                           ],
                         ),
-                        trailing: Text(
-                          "\$${pedido.total.toStringAsFixed(0)}",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // ICONO EDITAR (LÁPIZ)
+                            IconButton(
+                              icon: const Icon(Icons.edit,
+                                  color: Colors.blue, size: 18),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () async {
+                                // Capturar referencias ANTES del async
+                                final pedidoProvider =
+                                    context.read<PedidoProvider>();
+                                final mesaProvider =
+                                    context.read<MesaProvider>();
+
+                                await showDialog(
+                                  context: context,
+                                  builder: (_) => ModificarPedidoModal(
+                                    pedidoId: pedido.id ?? 0,
+                                    mesaNumero: widget.mesaNumero.toString(),
+                                    itemsPedido: pedidosMesa,
+                                  ),
+                                );
+
+                                if (!mounted) return;
+
+                                // Recargar AMBOS providers para actualizar pedidos Y totales de mesa
+                                await pedidoProvider.inicializarDatos();
+                                await mesaProvider.cargarMesas();
+                              },
+                            ),
+                            const SizedBox(width: 4),
+                            // ICONO ELIMINAR (TRASH)
+                            IconButton(
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.red, size: 18),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                final parentContext = context;
+
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text("Eliminar Item"),
+                                    content: const Text(
+                                        "¿Eliminar este item del pedido?"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text("Cancelar"),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          Navigator.pop(ctx);
+
+                                          await provider.borrarPedidoHistorico(
+                                              pedido.id ?? 0);
+
+                                          if (parentContext.mounted) {
+                                            parentContext
+                                                .read<MesaProvider>()
+                                                .cargarMesas();
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                        ),
+                                        child: const Text(
+                                          "Eliminar",
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            // PRECIO DEL ITEM
+                            Text(
+                              "\$${pedido.total.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
                   },
                 ),
               ),
-
               // RESUMEN TOTAL
               Container(
                 padding: const EdgeInsets.all(20),
@@ -152,7 +226,7 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
                       color: Colors.black12,
                       blurRadius: 10,
                       offset: const Offset(0, -5),
-                    )
+                    ),
                   ],
                 ),
                 child: Row(
