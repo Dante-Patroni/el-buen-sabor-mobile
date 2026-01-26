@@ -69,4 +69,13 @@ class MockMesaRepository extends _i1.Mock implements _i2.MesaRepository {
         returnValue: _i3.Future<void>.value(),
         returnValueForMissingStub: _i3.Future<void>.value(),
       ) as _i3.Future<void>);
+
+  @override
+  _i3.Future<double> cerrarMesaYFacturar(int? idMesa) => (super.noSuchMethod(
+        Invocation.method(
+          #cerrarMesaYFacturar,
+          [idMesa],
+        ),
+        returnValue: _i3.Future<double>.value(0.0),
+      ) as _i3.Future<double>);
 }
