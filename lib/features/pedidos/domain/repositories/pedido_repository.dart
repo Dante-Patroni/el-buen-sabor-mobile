@@ -18,5 +18,6 @@ abstract class PedidoRepository {
 Future<void> modificarPedido(int pedidoId, String mesa, List<Pedido> pedidoModificado);
 
 
+
   Future<void> updateEstado(int id, EstadoPedido nuevoEstado);
 }

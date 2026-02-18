@@ -26,7 +26,6 @@ import 'features/auth/presentation/pages/login_page.dart';
 import 'features/mesas/data/datasources/mesa_datasource.dart';
 import 'features/mesas/data/repositories/mesa_repository_impl.dart';
 
-
 /// 🚀 FUNCIÓN MAIN - Punto de entrada de la aplicación
 ///
 /// Esta función se ejecuta primero cuando la app inicia.
@@ -48,14 +47,13 @@ void main() {
   // evitando múltiples conexiones HTTP y manteniendo consistencia de datos.
   final pedidoRepository = PedidoRepositoryImpl();
   final mesaDataSource = MesaDataSource();
-final mesaRepository = MesaRepositoryImpl(mesaDataSource);
-
+  final mesaRepository = MesaRepositoryImpl(mesaDataSource);
 
   // Ejecuta la aplicación pasando el repositorio como dependencia
   runApp(ElBuenSaborApp(
     pedidoRepository: pedidoRepository,
     mesaRepository: mesaRepository,
-    ));
+  ));
 }
 
 /// 📱 WIDGET RAÍZ DE LA APLICACIÓN
@@ -100,8 +98,8 @@ class ElBuenSaborApp extends StatelessWidget {
         // El operador ?? proporciona un valor por defecto si es null
         ChangeNotifierProvider(
           create: (_) => PedidoProvider(
-              pedidoRepository: pedidoRepository,
-              ),
+            pedidoRepository: pedidoRepository,
+          ),
         ),
 
         // 🪑 MesaProvider - Maneja el estado de las mesas del restaurante
