@@ -6,7 +6,7 @@
 import 'dart:async' as _i3;
 
 import 'package:el_buen_sabor_app/core/services/storage_service.dart' as _i4;
-import 'package:el_buen_sabor_app/features/auth/data/auth_repository.dart'
+import 'package:el_buen_sabor_app/features/auth/domain/repositories/auth_repository.dart'
     as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 

@@ -1,23 +1,10 @@
-// ============================================================================
-// ARCHIVO: auth_repository_test.dart
-// ============================================================================
-// 📌 PROPÓSITO:
-// Tests unitarios para AuthRepository usando MOCKS de HTTP.
-// Verifica que las llamadas al API funcionen correctamente.
-//
-// 🎓 CONCEPTOS NUEVOS:
-// - Mock de HTTP Client: Simular respuestas del servidor
-// - Status Codes: 200 (OK), 401 (Unauthorized), 500 (Error)
-// - JSON encoding/decoding en tests
-// ============================================================================
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
-import 'package:el_buen_sabor_app/features/auth/data/auth_repository.dart';
+import 'package:el_buen_sabor_app/features/auth/data/datasources/auth_datasource.dart';
 import 'package:el_buen_sabor_app/features/auth/domain/models/usuario.dart';
 
 // Generar mock del cliente HTTP
@@ -25,13 +12,13 @@ import 'package:el_buen_sabor_app/features/auth/domain/models/usuario.dart';
 import 'auth_repository_test.mocks.dart';
 
 void main() {
-  late AuthRepository repository;
+  late AuthDataSource repository;
   late MockClient mockClient;
 
   setUp(() {
     mockClient = MockClient();
-    // Inyectar el mock client en el repositorio para testing
-    repository = AuthRepository(client: mockClient);
+    // Inyectar el mock client en el datasource para testing
+    repository = AuthDataSource(client: mockClient);
   });
 
   group('Login Exitoso', () {

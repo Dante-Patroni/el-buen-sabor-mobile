@@ -18,7 +18,9 @@
 
 import 'package:flutter/material.dart';
 import '../../../../core/services/storage_service.dart';
-import '../../data/auth_repository.dart';
+import '../../data/datasources/auth_datasource.dart';
+import '../../data/repositories/auth_repository_impl.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../../domain/models/usuario.dart';
 
 /// 🔐 PROVIDER DE AUTENTICACIÓN
@@ -85,7 +87,7 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider({
     AuthRepository? repository,
     StorageService? storage,
-  })  : _repository = repository ?? AuthRepository(),
+  })  : _repository = repository ?? AuthRepositoryImpl(AuthDataSource()),
         _storage = storage ?? StorageService();
 
   // ============================================================================

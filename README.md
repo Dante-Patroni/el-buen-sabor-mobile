@@ -17,94 +17,92 @@ Aplicación móvil Flutter para la gestión de pedidos en el restaurante "El Bue
 
 ## 🏗️ Arquitectura
 
-El proyecto implementa **Clean Architecture** con separación en tres capas:
+El proyecto implementa **Clean Architecture** con el patrón **Ports & Adapters (Hexagonal)**, organizado de forma homogénea en los tres módulos principales (`auth`, `mesas`, `pedidos`).
+
+### Estructura de Directorios
 
 ```
 lib/
 ├── core/                          # Configuración y servicios compartidos
-│   ├── config/                    # Configuración global (URLs, constantes)
-│   ├── database/                  # Base de datos local SQLite
-│   └── services/                  # Servicios compartidos (almacenamiento seguro)
+│   ├── config/                    # Configuración global (AppConfig)
+│   ├── database/                  # Base de datos local SQLite (DBHelper)
+│   └── services/                  # StorageService (tokens JWT seguros)
 │
-├── features/                      # Características organizadas por dominio
-│   ├── auth/                      # Autenticación
-│   │   ├── domain/               # Modelos de dominio
-│   │   ├── data/                 # Repositorios e implementaciones
-│   │   └── presentation/         # UI y gestión de estado
-│   │
-│   ├── mesas/                     # Gestión de mesas
+├── features/
+│   ├── auth/
 │   │   ├── domain/
+│   │   │   ├── models/usuario.dart
+│   │   │   └── repositories/auth_repository.dart      ← interfaz abstracta
 │   │   ├── data/
+│   │   │   ├── datasources/auth_datasource.dart        ← HTTP
+│   │   │   └── repositories/auth_repository_impl.dart  ← delgado
+│   │   └── presentation/
+│   │       ├── pages/login_page.dart
+│   │       └── providers/auth_provider.dart
+│   │
+│   ├── mesas/
+│   │   ├── domain/
+│   │   │   ├── models/
+│   │   │   └── repositories/mesa_repository.dart       ← interfaz abstracta
+│   │   ├── data/
+│   │   │   ├── datasources/mesa_datasource.dart        ← HTTP
+│   │   │   └── repositories/mesa_repository_impl.dart  ← delgado
 │   │   └── presentation/
 │   │
-│   └── pedidos/                   # Gestión de pedidos
+│   └── pedidos/
 │       ├── domain/
+│       │   ├── models/
+│       │   └── repositories/pedido_repository.dart     ← interfaz abstracta
 │       ├── data/
+│       │   ├── datasources/pedido_datasource.dart      ← HTTP + SQLite
+│       │   └── repositories/pedido_repository_impl.dart ← delgado
 │       └── presentation/
 │
-└── main.dart                      # Punto de entrada de la aplicación
+└── main.dart                      # DI: instancia DataSource → Impl → Provider
 ```
 
-### Capas de Clean Architecture
+### Flujo de Datos (igual en los 3 módulos)
 
-#### 🎯 Domain Layer (Dominio)
-- **Propósito**: Lógica de negocio pura
-- **Contenido**: Modelos de dominio, interfaces de repositorios
-- **Dependencias**: Ninguna (independiente de frameworks)
-- **Ejemplo**: `Usuario`, `Mesa`, `Pedido`
+```
+UI  →  Provider  →  Repository (abstracto)
+                          ↓
+                   RepositoryImpl       ← delgado, solo delega
+                          ↓
+                     DataSource         ← HTTP / SQLite
+                          ↓
+                      Backend API
+```
 
-#### 📦 Data Layer (Datos)
-- **Propósito**: Comunicación con fuentes de datos
-- **Contenido**: Implementaciones de repositorios, datasources, modelos de datos
-- **Dependencias**: Domain layer, packages HTTP/SQLite
-- **Ejemplo**: `AuthRepository`, `MesaDatasource`
+### Capas
 
-#### 🎨 Presentation Layer (Presentación)
-- **Propósito**: UI y gestión de estado
-- **Contenido**: Páginas, widgets, providers
-- **Dependencias**: Domain y Data layers
-- **Ejemplo**: `LoginPage`, `AuthProvider`
+| Capa | Responsabilidad | No depende de |
+|---|---|---|
+| **Domain** | Entidades + contratos abstractos | Frameworks, HTTP, DB |
+| **Data** | DataSource (HTTP/SQLite) + RepositoryImpl | UI, Provider |
+| **Presentation** | Provider (estado) + Pages (UI) | DataSource directamente |
 
 ---
 
 ## 🎨 Patrones de Diseño
 
-### 1. **Singleton**
-Garantiza una única instancia de servicios críticos:
-- `DBHelper` - Gestión de base de datos
-- `StorageService` - Almacenamiento seguro
-
-### 2. **Repository Pattern**
-Abstrae el origen de los datos:
-- `AuthRepository` - Autenticación
-- `MesaRepository` - Gestión de mesas
-- `PedidoRepository` - Gestión de pedidos
-
-### 3. **Provider + ChangeNotifier**
-Gestión de estado reactivo:
-- `AuthProvider` - Estado de autenticación
-- `MesaProvider` - Estado de mesas
-- `PedidoProvider` - Estado del carrito y pedidos
-
-### 4. **Factory Constructor**
-Deserialización de JSON:
-- `Usuario.fromJson()`
-- `Mesa.fromJson()`
-- `Plato.fromJson()`
-
-### 5. **Dependency Injection**
-Inyección de dependencias en `main.dart` con `MultiProvider`
+| Patrón | Aplicación |
+|---|---|
+| **Repository Pattern** | `AuthRepository`, `MesaRepository`, `PedidoRepository` (interfaces abstractas) |
+| **Provider + ChangeNotifier** | `AuthProvider`, `MesaProvider`, `PedidoProvider` |
+| **Dependency Injection** | `main.dart` instancia DataSource → Impl y los inyecta en Providers |
+| **Factory Constructor** | `Usuario.fromJson()`, `Mesa.fromJson()`, `PedidoModel.fromJson()` |
+| **Singleton** | `DBHelper`, `StorageService` |
 
 ---
 
 ## 🚀 Tecnologías
 
-- **Framework**: Flutter 3.x
-- **Lenguaje**: Dart 3.x
-- **Gestión de Estado**: Provider
-- **Base de Datos Local**: SQLite (sqflite)
-- **Almacenamiento Seguro**: flutter_secure_storage
-- **HTTP Client**: http package
+- **Framework**: Flutter 3.x / Dart 3.x
+- **Gestión de Estado**: Provider + ChangeNotifier
+- **Base de Datos Local**: SQLite (`sqflite`) — estrategia offline-first para menú
+- **Almacenamiento Seguro**: `flutter_secure_storage` (tokens JWT)
+- **HTTP Client**: `http` package
+- **Testing**: `flutter_test` + `mockito` + `build_runner`
 - **Backend**: Node.js + Express (repositorio separado)
 
 ---
@@ -114,27 +112,51 @@ Inyección de dependencias en `main.dart` con `MultiProvider`
 ### 🔐 Autenticación
 - Login con legajo y contraseña
 - Almacenamiento seguro de tokens JWT
-- Persistencia de sesión entre reinicios
 - Logout con limpieza de datos
 
 ### 🪑 Gestión de Mesas
 - Visualización del salón en tiempo real
 - Estados: Libre, Ocupada, Reservada
-- Asignación de mesas a mozos
 - Cierre de mesas con procesamiento de pago
 
 ### 📝 Gestión de Pedidos
 - Menú categorizado por rubros
 - Carrito de compras interactivo
-- Personalización de platos
 - Control de stock en tiempo real
 - Confirmación y envío al backend
+- Modificación y eliminación de pedidos históricos
 
 ### 📊 Modo Offline
-- Base de datos local SQLite
+- Caché de menú en SQLite
 - Sincronización automática con el backend
-- Datos de prueba (seed data) para desarrollo
-- Caché de menú y pedidos
+
+---
+
+## 🧪 Testing
+
+El proyecto cuenta con **38 tests unitarios** cubriendo todas las capas.
+
+```bash
+# Ejecutar todos los tests
+flutter test
+
+# Análisis estático
+flutter analyze
+
+# Regenerar mocks (tras cambios en interfaces)
+dart run build_runner build --delete-conflicting-outputs
+```
+
+### Cobertura de Tests
+
+| Módulo | Archivo | Tests |
+|---|---|---|
+| Auth - DataSource | `auth_repository_test.dart` | HTTP: 200, 401, 404, timeout, SocketException, headers |
+| Auth - Provider | `auth_provider_test.dart` | Estado inicial, login exitoso/fallido, logout, notifyListeners |
+| Mesas - Repository | `mesa_repository_test.dart` | CRUD completo, errores de red |
+| Pedidos - Provider | `pedido_provider_test.dart` | Carrito, confirmar, borrar histórico, modificar, inicializar datos |
+| Pedidos - Models | `pedido_model_test.dart` | Serialización JSON, mapeo de estados |
+| Usuario - Model | `usuario_test.dart` | Deserialización, valores default |
 
 ---
 
@@ -161,7 +183,7 @@ Inyección de dependencias en `main.dart` con `MultiProvider`
    ```
 
 3. **Configurar la URL del backend**
-   
+
    Editar `lib/core/config/app_config.dart`:
    ```dart
    static const String apiBaseUrl = 'http://TU_IP:3000/api';
@@ -174,151 +196,65 @@ Inyección de dependencias en `main.dart` con `MultiProvider`
 
 ### Configuración para Testing en Red Local
 
-Para probar en un dispositivo físico conectado por Wi-Fi:
-
 1. Asegúrate de que el dispositivo y la PC estén en la misma red
-2. Obtén la IP local de tu PC:
-   - Windows: `ipconfig`
-   - Linux/Mac: `ifconfig`
+2. Obtén la IP local de tu PC: `ipconfig` (Windows) o `ifconfig` (Linux/Mac)
 3. Actualiza `apiBaseUrl` con tu IP local
 4. Configura el firewall para permitir conexiones en el puerto 3000
-
----
-
-## 📚 Estructura de Datos
-
-### Usuario
-```dart
-{
-  "id": 1,
-  "nombre": "Dante",
-  "apellido": "Patroni",
-  "rol": "mozo",
-  "legajo": "12345"
-}
-```
-
-### Mesa
-```dart
-{
-  "id": 1,
-  "numero": "1",
-  "capacidad": 4,
-  "estado": "libre", // libre, ocupada, reservada
-  "mozo_id": null
-}
-```
-
-### Pedido
-```dart
-{
-  "id": 1,
-  "mesa_id": 1,
-  "plato_id": 5,
-  "cantidad": 2,
-  "estado": "pendiente", // pendiente, en_preparacion, listo, entregado, pagado
-  "total": 3000.0,
-  "fecha": "2025-12-29T09:00:00Z"
-}
-```
-
-### Plato
-```dart
-{
-  "id": 1,
-  "nombre": "Milanesa a Caballo",
-  "precio": 1500.0,
-  "descripcion": "Con papas fritas y huevo",
-  "categoria": "Cocina",
-  "rubro_id": 2,
-  "stock": {
-    "cantidad": 10,
-    "ilimitado": false,
-    "estado": "DISPONIBLE" // DISPONIBLE, AGOTADO, PAUSADO
-  }
-}
-```
 
 ---
 
 ## 🔒 Seguridad
 
 - **Tokens JWT**: Almacenados de forma encriptada usando `flutter_secure_storage`
-- **Encriptación nativa**: 
   - Android: KeyStore con AES
   - iOS: Keychain
 - **HTTPS**: Recomendado para producción
-- **Validación**: Validación de formularios en cliente y servidor
+- **Validación**: En cliente y servidor
 
 ---
 
-## 🧪 Testing
+## 📚 Estructura de Datos
 
-```bash
-# Análisis estático
-flutter analyze
-
-# Tests unitarios
-flutter test
-
-# Tests de integración
-flutter test integration_test/
+### Usuario
+```json
+{ "id": 1, "nombre": "Dante", "apellido": "Patroni", "rol": "mozo", "legajo": "12345" }
 ```
 
----
+### Mesa
+```json
+{ "id": 1, "numero": "1", "capacidad": 4, "estado": "libre", "mozo_id": null }
+```
 
-## 📖 Documentación del Código
+### Pedido
+```json
+{ "id": 1, "mesa_id": 1, "plato_id": 5, "cantidad": 2, "estado": "pendiente", "total": 3000.0 }
+```
 
-El código incluye comentarios profesionales y educativos que explican:
-
-- ✅ Arquitectura Clean Architecture
-- ✅ Patrones de diseño aplicados
-- ✅ Gestión de estado con Provider
-- ✅ Comunicación con APIs REST
-- ✅ Almacenamiento local y seguro
-- ✅ Flujos de datos entre capas
-
-**Archivos con documentación completa:**
-- `lib/main.dart`
-- `lib/core/config/app_config.dart`
-- `lib/core/database/db_helper.dart`
-- `lib/core/services/storage_service.dart`
-- `lib/features/auth/domain/models/usuario.dart`
-- `lib/features/auth/data/auth_repository.dart`
-- `lib/features/auth/presentation/providers/auth_provider.dart`
+### Plato
+```json
+{
+  "id": 1, "nombre": "Milanesa a Caballo", "precio": 1500.0,
+  "categoria": "Cocina", "rubro_id": 2,
+  "stock": { "cantidad": 10, "ilimitado": false, "estado": "DISPONIBLE" }
+}
+```
 
 ---
 
 ## 🤝 Contribución
 
-Este proyecto fue desarrollado como parte del curso de Programación Web II en la Universidad IUA.
+Desarrollado como proyecto de la materia **Programación Web II** — IUA (Instituto Universitario Aeronáutico), 4to Cuatrimestre.
 
-### Equipo de Desarrollo
-- **Desarrollador**: Dante Patroni
-- **Institución**: IUA (Instituto Universitario Aeronáutico)
-- **Curso**: Programación Web II - 4to Cuatrimestre
+**Desarrollador**: Dante Patroni
 
 ---
 
-## 📄 Licencia
-
-Este proyecto es de uso educativo.
-
----
-
-## 🔗 Enlaces Relacionados
+## 🔗 Enlaces
 
 - [Backend API - El Buen Sabor](https://github.com/tu-usuario/backend-el-buen-sabor)
 - [Documentación de Flutter](https://docs.flutter.dev/)
 - [Provider Package](https://pub.dev/packages/provider)
-- [SQLite para Flutter](https://pub.dev/packages/sqflite)
 
 ---
 
-## 📞 Contacto
-
-Para preguntas o sugerencias sobre el proyecto, contactar a través del repositorio de GitHub.
-
----
-
-**Última actualización**: Diciembre 2025
+**Última actualización**: Febrero 2026

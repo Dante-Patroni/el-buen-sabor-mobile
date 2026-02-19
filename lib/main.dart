@@ -18,11 +18,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 // Importaciones organizadas por features (características de la app)
+import 'features/pedidos/data/datasources/pedido_datasource.dart';
 import 'features/pedidos/data/repositories/pedido_repository_impl.dart';
+import 'features/pedidos/domain/repositories/pedido_repository.dart';
 import 'features/pedidos/presentation/providers/pedido_provider.dart';
 import 'features/mesas/presentation/providers/mesa_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/data/datasources/auth_datasource.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/mesas/data/datasources/mesa_datasource.dart';
 import 'features/mesas/data/repositories/mesa_repository_impl.dart';
 
@@ -45,12 +50,15 @@ void main() {
   // Creamos una instancia única del repositorio de pedidos.
   // Esto permite compartir la misma instancia en toda la app,
   // evitando múltiples conexiones HTTP y manteniendo consistencia de datos.
-  final pedidoRepository = PedidoRepositoryImpl();
+  final authDataSource = AuthDataSource();
+  final authRepository = AuthRepositoryImpl(authDataSource);
+  final pedidoDataSource = PedidoDataSource();
+  final pedidoRepository = PedidoRepositoryImpl(pedidoDataSource);
   final mesaDataSource = MesaDataSource();
   final mesaRepository = MesaRepositoryImpl(mesaDataSource);
 
-  // Ejecuta la aplicación pasando el repositorio como dependencia
   runApp(ElBuenSaborApp(
+    authRepository: authRepository,
     pedidoRepository: pedidoRepository,
     mesaRepository: mesaRepository,
   ));
@@ -66,11 +74,13 @@ void main() {
 /// - Facilita testing y reutilización de código
 /// - Reduce acoplamiento entre componentes
 class ElBuenSaborApp extends StatelessWidget {
-  final PedidoRepositoryImpl pedidoRepository;
+  final AuthRepository authRepository;
+  final PedidoRepository pedidoRepository;
   final MesaRepositoryImpl mesaRepository;
 
   const ElBuenSaborApp({
     super.key,
+    required this.authRepository,
     required this.pedidoRepository,
     required this.mesaRepository,
   });
@@ -91,7 +101,8 @@ class ElBuenSaborApp extends StatelessWidget {
         // 🔐 AuthProvider - Maneja autenticación y sesión del usuario
         // ChangeNotifier permite que los widgets escuchen cambios de estado
         //Creo la instancia directamente aquí porque es global y vive durante toda la app
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(
+            create: (_) => AuthProvider(repository: authRepository)),
 
         // 🍽️ PedidoProvider - Maneja el carrito y creación de pedidos
         // Recibe el repositorio inyectado para comunicarse con el backend

@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:el_buen_sabor_app/features/auth/presentation/providers/auth_provider.dart';
-import 'package:el_buen_sabor_app/features/auth/data/auth_repository.dart';
+import 'package:el_buen_sabor_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:el_buen_sabor_app/core/services/storage_service.dart';
 import 'package:el_buen_sabor_app/features/auth/domain/models/usuario.dart';
 
