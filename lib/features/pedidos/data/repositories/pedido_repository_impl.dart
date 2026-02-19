@@ -123,7 +123,10 @@ class PedidoRepositoryImpl implements PedidoRepository {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+
+        final List<dynamic> jsonList = decoded['data'] ?? [];
+
         final List<Pedido> listaAplanada = [];
 
         // 🔄 RECORREMOS LOS TICKETS (PEDIDOS PADRE)

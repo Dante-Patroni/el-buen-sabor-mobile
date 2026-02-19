@@ -19,20 +19,7 @@ class MesaRepositoryImpl implements MesaRepository {
   }
 
   @override
-  Future<void> cerrarMesa(int id) async {
-    // 👇 ¡Mira qué limpieza! Delegamos la tarea sucia
-    await dataSource.cerrarMesa(id);
-  }
-
-  @override
-  Future<double> cerrarMesaYFacturar(int idMesa) async {
-    /// **Responsabilidad:** Implementar el contrato del repositorio.
-    /// 
-    /// Este método simplemente delega al DataSource.
-    /// No agrega lógica de negocio aquí, solo pasa los datos entre capas.
-    /// 
-    /// **Arquitectura:** Esta es la capa de datos (implementación).
-    /// Separa la lógica de dominio de los detalles de implementación HTTP.
-    return await dataSource.cerrarMesaYFacturar(idMesa);
+  Future<double> cerrarMesa(int idMesa) {
+    return dataSource.cerrarMesa(idMesa);
   }
 }

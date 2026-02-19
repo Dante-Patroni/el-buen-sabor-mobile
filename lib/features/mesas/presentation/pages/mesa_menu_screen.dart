@@ -379,7 +379,7 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
       // ------------------------------------------------
       // Este método internamente llama: Provider → Repository → DataSource → API
       final totalCobrado =
-          await mesaProvider.cerrarMesaYFacturar(_mesaActual.id);
+          await mesaProvider.cerrarMesa(_mesaActual.id);
 
       // Verificación de seguridad después de operación async
       if (!context.mounted) return;

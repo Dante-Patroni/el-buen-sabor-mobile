@@ -57,47 +57,22 @@ class MesaProvider extends ChangeNotifier {
   // =========================
   // Caso de uso: cerrar mesa
   // =========================
-  Future<bool> cerrarMesa(int idMesa) async {
-    try {
-      await _repository.cerrarMesa(idMesa);
-      await cargarMesas();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
+Future<double?> cerrarMesa(int idMesa) async {
+  _isLoading = true;
+  _error = '';
+  notifyListeners();
 
-  // =========================
-  // Caso de uso: cerrar mesa y facturar
-  // =========================
-  /// 
-  /// **Responsabilidad:** Ejecutar el caso de uso "Cerrar Mesa y Facturar".
-  /// 
-  /// **Flujo:**
-  /// 1. Llama al repositorio para cerrar la mesa y facturar
-  /// 2. Si tiene éxito, refresca la lista de mesas (para actualizar el estado)
-  /// 3. Retorna el total cobrado para mostrarlo en la UI
-  /// 
-  /// **Arquitectura:** Este es el caso de uso de la capa de presentación.
-  /// La UI debe llamar a este método, NO al repositorio directamente.
-  /// 
-  /// Retorna `null` si hubo un error, o el `totalCobrado` si fue exitoso.
-  Future<double?> cerrarMesaYFacturar(int idMesa) async {
-    try {
-      // 1. Ejecutamos el caso de uso a través del repositorio
-      final totalCobrado = await _repository.cerrarMesaYFacturar(idMesa);
-      
-      // 2. Refrescamos la lista de mesas para que la UI se actualice
-      // (la mesa ahora debería aparecer como "libre")
-      await cargarMesas();
-      
-      // 3. Retornamos el total cobrado para que la UI lo muestre
-      return totalCobrado;
-    } catch (e) {
-      // Si hay error, guardamos el mensaje y retornamos null
-      _error = 'Error al cerrar mesa: $e';
-      notifyListeners();
-      return null;
-    }
+  try {
+    final total = await _repository.cerrarMesa(idMesa);
+    await cargarMesas();
+    return total;
+  } catch (_) {
+    _error = 'Error al cerrar mesa';
+    return null;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
+
 }
