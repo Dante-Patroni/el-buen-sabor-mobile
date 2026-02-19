@@ -14,6 +14,7 @@
 
 library;
 
+import 'package:el_buen_sabor_app/features/mesas/domain/repositories/mesa_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -50,11 +51,11 @@ void main() {
   // Creamos una instancia única del repositorio de pedidos.
   // Esto permite compartir la misma instancia en toda la app,
   // evitando múltiples conexiones HTTP y manteniendo consistencia de datos.
-  final authDataSource = AuthDataSource();
-  final authRepository = AuthRepositoryImpl(authDataSource);
+  final authDataSource = AuthDataSource();//capa de datos, se comunica con el backend
+  final authRepository = AuthRepositoryImpl(authDataSource);//interfaz abstracta, recibe authDataSource. No lo crea
   final pedidoDataSource = PedidoDataSource();
-  final pedidoRepository = PedidoRepositoryImpl(pedidoDataSource);
-  final mesaDataSource = MesaDataSource();
+  final pedidoRepository = PedidoRepositoryImpl(pedidoDataSource);//Interfaz abstracta, recibe pedidoDataSource. No lo crea
+  final mesaDataSource = MesaDataSource();  //capa de datos, se comunica con el backend
   final mesaRepository = MesaRepositoryImpl(mesaDataSource);
 
   runApp(ElBuenSaborApp(
@@ -76,7 +77,7 @@ void main() {
 class ElBuenSaborApp extends StatelessWidget {
   final AuthRepository authRepository;
   final PedidoRepository pedidoRepository;
-  final MesaRepositoryImpl mesaRepository;
+  final MesaRepository mesaRepository;
 
   const ElBuenSaborApp({
     super.key,
