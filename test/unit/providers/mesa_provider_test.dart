@@ -43,7 +43,7 @@ void main() {
   });
 
   test('cerrarMesa llama al repository y recarga mesas', () async {
-    when(repository.cerrarMesa(1)).thenAnswer((_) async {});
+    when(repository.cerrarMesa(1)).thenAnswer((_) async => 0.0);
     when(repository.getMesas()).thenAnswer((_) async => []);
 
     await provider.cerrarMesa(1);
