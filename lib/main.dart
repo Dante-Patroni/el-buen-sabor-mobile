@@ -26,6 +26,7 @@ import 'features/pedidos/presentation/providers/pedido_provider.dart';
 import 'features/mesas/presentation/providers/mesa_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/pages/login_page.dart';
+import 'features/mesas/presentation/pages/salon_mesas_screen.dart';
 import 'features/auth/data/datasources/auth_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
@@ -141,8 +142,48 @@ class ElBuenSaborApp extends StatelessWidget {
 
         // 🏠 PÁGINA INICIAL - Primera pantalla que ve el usuario
         // const: Optimización de rendimiento (widget inmutable en tiempo de compilación)
-        home: const LoginPage(),
+        home: const SessionGate(),
       ),
+    );
+  }
+}
+
+class SessionGate extends StatefulWidget {
+  const SessionGate({super.key});
+
+  @override
+  State<SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends State<SessionGate> {
+  bool _restored = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_restored) return;
+    _restored = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AuthProvider>().restoreSessionFromToken();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (_, authProvider, __) {
+        if (!_restored || authProvider.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (authProvider.isAuthenticated) {
+          return const SalonMesasScreen();
+        }
+
+        return const LoginPage();
+      },
     );
   }
 }

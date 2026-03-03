@@ -7,6 +7,7 @@ abstract class PedidoRepository {
   Future<int> insertPedido(String mesaId, List<Pedido> carrito);
 
   Future<List<Pedido>> getPedidos();
+  Future<List<Pedido>> getPedidosPorMesa(String mesa);
   Future<List<Plato>> getMenu();
   Future<List<Rubro>> getRubros(); // ✅ Nuevo método
 

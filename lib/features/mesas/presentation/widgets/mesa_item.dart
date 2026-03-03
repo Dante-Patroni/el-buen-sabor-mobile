@@ -28,7 +28,7 @@ class MesaItem extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.deepOrange.withOpacity(0.1),
+              color: Colors.deepOrange.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -68,7 +68,7 @@ class MesaItem extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.deepOrange.withOpacity(0.1),
+                  color: Colors.deepOrange.withValues(alpha: 0.1),
 
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -82,7 +82,7 @@ class MesaItem extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      mesa.mozoAsignado ?? "Dante", // Tu lógica de Mozo
+                      mesa.mozoAsignado ?? "Sin asignar",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,

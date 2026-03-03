@@ -11,18 +11,18 @@ class MesaModel extends Mesa {
   });
 
   factory MesaModel.fromJson(Map<String, dynamic> json) {
+    final mozoNombre = json['mozo_nombre'] ??
+        ((json['mozo'] is Map<String, dynamic>)
+            ? json['mozo']['nombre']
+            : null);
     return MesaModel(
       id: int.parse(json['id'].toString()),
       nombre: json['nombre'] ?? 'Mesa ?',
       estado: json['estado'] ?? 'libre',
       totalActual: double.tryParse(json['totalActual'].toString()) ?? 0.0,
       itemsPendientes: int.tryParse(json['itemsPendientes'].toString()) ?? 0,
-
-      // 👇 AQUÍ ESTÁ LA SIMULACIÓN:
-      // Si está ocupada, le asignamos un mozo (simulado o real)
       mozoAsignado: (json['estado'] == 'ocupada')
-          ? (json['mozo_nombre'] ??
-                'Dante') // Si el backend no manda nombre, ponemos 'Dante'
+          ? mozoNombre?.toString()
           : null,
     );
   }

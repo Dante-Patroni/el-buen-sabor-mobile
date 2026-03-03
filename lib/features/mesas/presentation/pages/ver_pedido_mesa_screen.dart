@@ -26,7 +26,8 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PedidoProvider>(context, listen: false).inicializarDatos();
+      Provider.of<PedidoProvider>(context, listen: false)
+          .cargarPedidosDeMesa(widget.mesaNumero.toString());
     });
   }
 
@@ -149,7 +150,8 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
                                 if (!mounted) return;
 
                                 // Recargar AMBOS providers para actualizar pedidos Y totales de mesa
-                                await pedidoProvider.inicializarDatos();
+                                await pedidoProvider
+                                    .cargarPedidosDeMesa(widget.mesaNumero.toString());
                                 await mesaProvider.cargarMesas();
                               },
                             ),
@@ -161,8 +163,6 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               onPressed: () {
-                                final parentContext = context;
-
                                 showDialog(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
@@ -177,15 +177,62 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
                                       ElevatedButton(
                                         onPressed: () async {
                                           Navigator.pop(ctx);
-
-                                          await provider.borrarPedidoHistorico(
-                                              pedido.id ?? 0);
-
-                                          if (parentContext.mounted) {
-                                            parentContext
-                                                .read<MesaProvider>()
-                                                .cargarMesas();
+                                          final pedidoId = pedido.id;
+                                          if (pedidoId == null) {
+                                            if (!mounted) return;
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                    "No se pudo identificar el pedido"),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                            return;
                                           }
+                                          final mesaProvider =
+                                              context.read<MesaProvider>();
+                                          final messenger =
+                                              ScaffoldMessenger.of(context);
+
+                                          final itemsMismoPedido = pedidosMesa
+                                              .where((p) => p.id == pedidoId)
+                                              .toList();
+
+                                          bool exito;
+                                          if (itemsMismoPedido.length <= 1) {
+                                            exito = await provider
+                                                .borrarPedidoHistorico(pedidoId);
+                                          } else {
+                                            final itemsActualizados =
+                                                List<Pedido>.from(
+                                                    itemsMismoPedido)
+                                                  ..remove(pedido);
+                                            exito =
+                                                await provider.modificarPedido(
+                                              pedidoId,
+                                              widget.mesaNumero.toString(),
+                                              itemsActualizados,
+                                            );
+                                          }
+
+                                          if (!mounted) return;
+                                          await provider.cargarPedidosDeMesa(
+                                            widget.mesaNumero.toString(),
+                                          );
+                                          if (!mounted) return;
+                                          await mesaProvider.cargarMesas();
+                                          if (!mounted) return;
+                                          messenger.showSnackBar(
+                                            SnackBar(
+                                              content: Text(exito
+                                                  ? "Item actualizado correctamente"
+                                                  : "No se pudo actualizar el pedido"),
+                                              backgroundColor: exito
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                            ),
+                                          );
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.red,

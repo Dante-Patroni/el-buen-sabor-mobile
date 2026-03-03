@@ -37,6 +37,11 @@ class PedidoRepositoryImpl implements PedidoRepository {
   }
 
   @override
+  Future<List<Pedido>> getPedidosPorMesa(String mesa) {
+    return dataSource.getPedidosPorMesa(mesa);
+  }
+
+  @override
   Future<int> insertPedido(String mesaId, List<Pedido> carrito) {
     return dataSource.insertPedido(mesaId, carrito);
   }

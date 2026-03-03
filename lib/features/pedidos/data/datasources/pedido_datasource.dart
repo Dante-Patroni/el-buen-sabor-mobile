@@ -24,6 +24,8 @@ import '../models/plato_model.dart';
 /// ```
 class PedidoDataSource {
   static const String _baseUrl = AppConfig.apiBaseUrl;
+  static const String _sessionExpiredMessage =
+      'Sesión expirada. Iniciá sesión nuevamente.';
 
   final DBHelper _dbHelper = DBHelper.instance;
   final StorageService _storage = StorageService();
@@ -34,10 +36,34 @@ class PedidoDataSource {
 
   Future<Map<String, String>> _getAuthHeaders() async {
     final token = await _storage.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception(_sessionExpiredMessage);
+    }
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
+  }
+
+  void _throwIfUnauthorized(http.Response response) {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception(_sessionExpiredMessage);
+    }
+  }
+
+  String _extractBackendMessage(String body, {String fallback = 'Error de servidor'}) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['mensaje'] ?? decoded['message'] ?? decoded['error'];
+        if (message != null && message.toString().trim().isNotEmpty) {
+          return message.toString();
+        }
+      }
+    } catch (_) {
+      // Ignorado: usamos fallback
+    }
+    return fallback;
   }
 
   // ===========================================================================
@@ -52,6 +78,7 @@ class PedidoDataSource {
       final response = await http
           .get(url, headers: await _getAuthHeaders())
           .timeout(const Duration(seconds: 5));
+      _throwIfUnauthorized(response);
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = jsonDecode(response.body);
@@ -59,8 +86,19 @@ class PedidoDataSource {
         await _syncMenuLocal(platos);
         return platos;
       } else {
-        throw Exception('Error servidor: ${response.statusCode}');
+        throw Exception(
+          _extractBackendMessage(
+            response.body,
+            fallback: 'Error servidor: ${response.statusCode}',
+          ),
+        );
       }
+    } on Exception catch (e) {
+      if (e.toString().contains(_sessionExpiredMessage)) {
+        rethrow;
+      }
+      debugPrint('⚠️ Error Menu Online ($e). Usando modo offline.');
+      return await _getLocalMenu();
     } catch (e) {
       debugPrint('⚠️ Error Menu Online ($e). Usando modo offline.');
       return await _getLocalMenu();
@@ -98,13 +136,25 @@ class PedidoDataSource {
     try {
       final url = Uri.parse('$_baseUrl/rubros');
       final response = await http.get(url, headers: await _getAuthHeaders());
+      _throwIfUnauthorized(response);
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = jsonDecode(response.body);
         return jsonList.map((j) => Rubro.fromJson(j)).toList();
       } else {
-        throw Exception('Error cargando rubros: ${response.statusCode}');
+        throw Exception(
+          _extractBackendMessage(
+            response.body,
+            fallback: 'Error cargando rubros: ${response.statusCode}',
+          ),
+        );
       }
+    } on Exception catch (e) {
+      if (e.toString().contains(_sessionExpiredMessage)) {
+        rethrow;
+      }
+      debugPrint('⚠️ Error cargando rubros: $e');
+      return [];
     } catch (e) {
       debugPrint('⚠️ Error cargando rubros: $e');
       return [];
@@ -124,40 +174,44 @@ class PedidoDataSource {
         Uri.parse('$_baseUrl/pedidos'),
         headers: await _getAuthHeaders(),
       );
+      _throwIfUnauthorized(response);
 
       if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        final List<dynamic> jsonList = decoded['data'] ?? [];
-        final List<PedidoModel> listaAplanada = [];
-
-        for (var jsonPedido in jsonList) {
-          if (jsonPedido['DetallePedidos'] != null) {
-            final detalles = jsonPedido['DetallePedidos'] as List;
-            for (var detalle in detalles) {
-              listaAplanada.add(
-                PedidoModel(
-                  id: jsonPedido['id'],
-                  mesa: jsonPedido['mesa']?.toString() ?? '',
-                  cliente: jsonPedido['cliente']?.toString() ?? 'Anónimo',
-                  estado: _mapEstado(jsonPedido['estado']),
-                  fecha: jsonPedido['createdAt'] != null
-                      ? DateTime.parse(jsonPedido['createdAt'])
-                      : null,
-                  platoId: detalle['PlatoId'] ?? 0,
-                  cantidad: detalle['cantidad'] ?? 1,
-                  total: double.tryParse(detalle['subtotal'].toString()) ?? 0.0,
-                  aclaracion: '',
-                ),
-              );
-            }
-          }
-        }
-        return listaAplanada;
+        return _parsePedidosFromResponseBody(response.body);
       } else {
-        throw Exception('Error al cargar pedidos: ${response.statusCode}');
+        throw Exception(
+          _extractBackendMessage(
+            response.body,
+            fallback: 'Error al cargar pedidos: ${response.statusCode}',
+          ),
+        );
       }
     } catch (e) {
       debugPrint('❌ Error en getPedidos: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<List<PedidoModel>> getPedidosPorMesa(String mesa) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/pedidos/mesa/$mesa'),
+        headers: await _getAuthHeaders(),
+      ); 
+      _throwIfUnauthorized(response);
+
+      if (response.statusCode == 200) {
+        return _parsePedidosFromResponseBody(response.body);
+      }
+
+      throw Exception(
+        _extractBackendMessage(
+          response.body,
+          fallback: 'Error al cargar pedidos de mesa: ${response.statusCode}',
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error en getPedidosPorMesa($mesa): $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -171,7 +225,13 @@ class PedidoDataSource {
     debugPrint('🚀 [DataSource] Enviando a $url');
 
     try {
+      if (carrito.isEmpty) {
+        throw Exception('No hay productos para enviar.');
+      }
       final headers = await _getAuthHeaders();
+      final clientePedido = carrito.first.cliente.trim().isNotEmpty
+          ? carrito.first.cliente.trim()
+          : 'Cliente Anónimo';
 
       final List<Map<String, dynamic>> listaProductos = carrito.map((item) {
         return {
@@ -183,7 +243,7 @@ class PedidoDataSource {
 
       final Map<String, dynamic> bodyData = {
         'mesa': mesaId,
-        'cliente': 'Cliente App',
+        'cliente': clientePedido,
         'productos': listaProductos,
       };
 
@@ -193,6 +253,7 @@ class PedidoDataSource {
       final response = await http
           .post(url, headers: headers, body: jsonBody)
           .timeout(const Duration(seconds: 10));
+      _throwIfUnauthorized(response);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -209,8 +270,10 @@ class PedidoDataSource {
         final errorJson = jsonDecode(response.body);
         throw Exception(errorJson['error'] ?? 'Stock insuficiente');
       } else {
-        throw Exception(
-            'Backend rechazó (${response.statusCode}): ${response.body}');
+        throw Exception(_extractBackendMessage(
+          response.body,
+          fallback: 'Backend rechazó (${response.statusCode})',
+        ));
       }
     } catch (e) {
       throw Exception('Fallo al enviar: $e');
@@ -224,9 +287,18 @@ class PedidoDataSource {
   Future<void> deletePedido(int id) async {
     final url = Uri.parse('$_baseUrl/pedidos/$id');
     try {
-      await http.delete(url, headers: await _getAuthHeaders());
-    } catch (_) {
-      // Fail silent: si falla el borrado en servidor, no propagamos el error
+      final response = await http.delete(url, headers: await _getAuthHeaders());
+      _throwIfUnauthorized(response);
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception(
+          _extractBackendMessage(
+            response.body,
+            fallback: 'Error al eliminar pedido (${response.statusCode})',
+          ),
+        );
+      }
+    } catch (e) {
+      throw Exception('No se pudo eliminar el pedido: $e');
     }
   }
 
@@ -239,7 +311,13 @@ class PedidoDataSource {
     final url = Uri.parse('$_baseUrl/pedidos/modificar');
 
     try {
+      if (pedidoModificado.isEmpty) {
+        throw Exception('El pedido no puede quedar sin productos.');
+      }
       final headers = await _getAuthHeaders();
+      final clientePedido = pedidoModificado.first.cliente.trim().isNotEmpty
+          ? pedidoModificado.first.cliente.trim()
+          : 'Cliente Anónimo';
 
       final List<Map<String, dynamic>> listaProductos =
           pedidoModificado.map((item) {
@@ -253,7 +331,7 @@ class PedidoDataSource {
       final Map<String, dynamic> bodyData = {
         'id': pedidoId,
         'mesa': mesa,
-        'cliente': 'Cliente App',
+        'cliente': clientePedido,
         'productos': listaProductos,
       };
 
@@ -263,13 +341,16 @@ class PedidoDataSource {
       final response = await http
           .put(url, headers: headers, body: jsonBody)
           .timeout(const Duration(seconds: 10));
+      _throwIfUnauthorized(response);
 
       debugPrint('📥 [DataSource] Response Status: ${response.statusCode}');
       debugPrint('📥 [DataSource] Response Body: ${response.body}');
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception(
-            'Error modificando pedido: ${response.statusCode} - ${response.body}');
+        throw Exception(_extractBackendMessage(
+          response.body,
+          fallback: 'Error modificando pedido: ${response.statusCode}',
+        ));
       }
 
       debugPrint('✅ Pedido $pedidoId modificado exitosamente');
@@ -300,5 +381,38 @@ class PedidoDataSource {
       default:
         return EstadoPedido.pendiente;
     }
+  }
+
+  List<PedidoModel> _parsePedidosFromResponseBody(String body) {
+    final decoded = jsonDecode(body);
+    final List<dynamic> jsonList = decoded is Map<String, dynamic>
+        ? (decoded['data'] as List<dynamic>? ?? [])
+        : (decoded as List<dynamic>? ?? []);
+    final List<PedidoModel> listaAplanada = [];
+
+    for (var jsonPedido in jsonList) {
+      final detallesRaw = jsonPedido['DetallePedidos'] ?? jsonPedido['detallePedidos'];
+      if (detallesRaw == null) continue;
+
+      final detalles = detallesRaw as List;
+      for (var detalle in detalles) {
+        listaAplanada.add(
+          PedidoModel(
+            id: jsonPedido['id'],
+            mesa: jsonPedido['mesa']?.toString() ?? '',
+            cliente: jsonPedido['cliente']?.toString() ?? 'Anónimo',
+            estado: _mapEstado(jsonPedido['estado']),
+            fecha: jsonPedido['createdAt'] != null
+                ? DateTime.parse(jsonPedido['createdAt'])
+                : null,
+            platoId: detalle['PlatoId'] ?? detalle['platoId'] ?? 0,
+            cantidad: detalle['cantidad'] ?? 1,
+            total: double.tryParse(detalle['subtotal'].toString()) ?? 0.0,
+            aclaracion: detalle['aclaracion']?.toString() ?? '',
+          ),
+        );
+      }
+    }
+    return listaAplanada;
   }
 }

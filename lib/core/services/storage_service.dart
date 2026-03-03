@@ -116,6 +116,7 @@ class StorageService {
     } catch (e) {
       // Captura cualquier error (permisos, espacio, etc.)
       debugPrint("❌ Error guardando token: $e");
+      rethrow;
     }
   }
 
@@ -165,9 +166,13 @@ class StorageService {
   ///
   /// RETORNA: `Future<void>` - Operación asíncrona sin valor de retorno
   Future<void> deleteToken() async {
-    // Elimina la entrada con clave _keyToken
-    await _storage.delete(key: _keyToken);
-    debugPrint("👋 Token eliminado (Logout)");
+    try {
+      await _storage.delete(key: _keyToken);
+      debugPrint("👋 Token eliminado (Logout)");
+    } catch (e) {
+      debugPrint("❌ Error eliminando token: $e");
+      rethrow;
+    }
   }
 
   // ============================================================================

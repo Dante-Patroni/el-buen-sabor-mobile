@@ -16,6 +16,8 @@
 // y se reconstruyan automáticamente cuando el estado cambia.
 // ============================================================================
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../data/datasources/auth_datasource.dart';
@@ -46,6 +48,8 @@ import '../../domain/models/usuario.dart';
 /// 3. Los widgets lo acceden con Provider.of o context.watch
 /// 4. Se destruye cuando la app se cierra
 class AuthProvider extends ChangeNotifier {
+  static const String _defaultLoginError = 'No se pudo iniciar sesión';
+  static const String _defaultLogoutError = 'No se pudo cerrar sesión';
   // ============================================================================
   // 🔧 DEPENDENCIAS - Inyección de Servicios
   // ============================================================================
@@ -137,6 +141,70 @@ class AuthProvider extends ChangeNotifier {
   /// Text('Hola ${authProvider.usuario?.nombre}');
   /// ```
   Usuario? get usuario => _usuario;
+  bool get isAuthenticated => _usuario != null;
+
+  String _normalizarError(Object e, {String fallback = 'Error inesperado'}) {
+    final msg = e.toString().replaceAll('Exception: ', '').trim();
+    return msg.isEmpty ? fallback : msg;
+  }
+
+  Usuario? _usuarioDesdeToken(String token) {
+    final parts = token.split('.');
+    if (parts.length < 2) return null;
+
+    try {
+      final normalized = base64Url.normalize(parts[1]);
+      final payloadBytes = base64Url.decode(normalized);
+      final payloadMap =
+          jsonDecode(utf8.decode(payloadBytes)) as Map<String, dynamic>;
+
+      final id = int.tryParse(payloadMap['id']?.toString() ?? '') ?? 0;
+      if (id <= 0) return null;
+
+      return Usuario(
+        id: id,
+        nombre: payloadMap['nombre']?.toString() ?? '',
+        apellido: '',
+        rol: payloadMap['rol']?.toString() ?? '',
+        legajo: payloadMap['legajo']?.toString() ?? '',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> restoreSessionFromToken() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final token = await _storage.getToken();
+      if (token == null || token.isEmpty) {
+        _usuario = null;
+        return;
+      }
+
+      final usuarioToken = _usuarioDesdeToken(token);
+      if (usuarioToken == null) {
+        await _storage.deleteToken();
+        _usuario = null;
+        _errorMessage = 'Sesión inválida. Iniciá sesión nuevamente.';
+        return;
+      }
+
+      _usuario = usuarioToken;
+    } catch (e) {
+      _usuario = null;
+      _errorMessage = _normalizarError(
+        e,
+        fallback: 'No se pudo restaurar sesión',
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   // ============================================================================
   // 🔑 LOGIN - Autenticación de Usuario
@@ -213,6 +281,7 @@ class AuthProvider extends ChangeNotifier {
       // Guarda el usuario en memoria para acceso rápido
       // Se usa para mostrar nombre en la UI, verificar permisos, etc.
       _usuario = usuarioRecibido;
+      _errorMessage = null;
 
       // -----------------------------------------------------------------------
       // 📍 PASO 6: Finalizar operación exitosa
@@ -228,9 +297,7 @@ class AuthProvider extends ChangeNotifier {
     // -------------------------------------------------------------------------
 
     catch (e) {
-      // Limpia el mensaje de error removiendo el prefijo "Exception: "
-      // para que sea más legible en la UI
-      _errorMessage = e.toString().replaceAll("Exception: ", "");
+      _errorMessage = _normalizarError(e, fallback: _defaultLoginError);
 
       _isLoading = false; // Desactivar indicador de carga
       notifyListeners(); // Notificar a la UI (muestra mensaje de error)
@@ -257,16 +324,15 @@ class AuthProvider extends ChangeNotifier {
   /// ));
   /// ```
   Future<void> logout() async {
-    // Elimina el token del almacenamiento seguro
-    await _storage.deleteToken();
-
-    // Limpia el usuario de la memoria
-    _usuario = null;
-
-    // Notifica a la UI para que se actualice
-    // Los widgets que escuchan verán que usuario es null
-    // y pueden redirigir a la pantalla de login
-    notifyListeners();
+    try {
+      await _storage.deleteToken();
+    } catch (e) {
+      _errorMessage = _normalizarError(e, fallback: _defaultLogoutError);
+    } finally {
+      _usuario = null;
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // ============================================================================

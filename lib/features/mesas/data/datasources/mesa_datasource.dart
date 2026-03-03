@@ -6,21 +6,46 @@ import '../../../../core/services/storage_service.dart'; // 👈 Importamos la C
 import '../models/mesa_model.dart';
 
 class MesaDataSource {
-  // ⚠️ Tu IP local correcta
   final String baseUrl = '${AppConfig.apiBaseUrl}/mesas';
+  final String pedidosBaseUrl = '${AppConfig.apiBaseUrl}/pedidos';
+  static const String _sessionExpiredMessage =
+      'Sesión expirada. Iniciá sesión nuevamente.';
 
   // Instancia del servicio de almacenamiento
   final StorageService _storage = StorageService();
 
   // 🔐 HELPER: Obtener Headers con Token
   Future<Map<String, String>> _getAuthHeaders() async {
-    // Leemos el token de la caja fuerte
-    String? token = await _storage.getToken();
+    final token = await _storage.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception(_sessionExpiredMessage);
+    }
 
     return {
       "Content-Type": "application/json",
-      "Authorization": "Bearer $token", // 👈 LA LLAVE MAESTRA
+      "Authorization": "Bearer $token",
     };
+  }
+
+  void _throwIfUnauthorized(http.Response response) {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception(_sessionExpiredMessage);
+    }
+  }
+
+  String _extractBackendMessage(String body, {String fallback = 'Error de servidor'}) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['mensaje'] ?? decoded['message'] ?? decoded['error'];
+        if (message != null && message.toString().trim().isNotEmpty) {
+          return message.toString();
+        }
+      }
+    } catch (_) {
+      // Ignorado: usamos fallback
+    }
+    return fallback;
   }
 
   // 1. GET MESAS (Ahora blindado)
@@ -28,72 +53,111 @@ class MesaDataSource {
     try {
       final url = Uri.parse(baseUrl);
 
-      // 👇 Inyectamos los headers aquí
       final response = await http.get(url, headers: await _getAuthHeaders());
+      _throwIfUnauthorized(response);
 
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
         return data.map((json) => MesaModel.fromJson(json)).toList();
       } else {
-        // Si el token expiró o es inválido, aquí saltará el error
-        throw Exception('Error API: ${response.statusCode}');
+        throw Exception(_extractBackendMessage(
+          response.body,
+          fallback: 'Error API: ${response.statusCode}',
+        ));
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      throw Exception('No se pudo obtener mesas: $e');
     }
   }
 
- // 2. CERRAR MESA (UNIFICADO CON FACTURACIÓN)
-Future<double> cerrarMesa(int idMesa) async {
-  final url = Uri.parse('$baseUrl/$idMesa/cerrar');
+  // 2. CERRAR MESA (FACTURACIÓN BACKEND)
+  Future<double> cerrarMesa(int idMesa) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final urlMesas = Uri.parse('$baseUrl/$idMesa/cerrar');
 
-  debugPrint("🌐 CERRANDO MESA: $url");
+      http.Response response = await http.post(urlMesas, headers: headers);
+      if (response.statusCode == 404) {
+        final urlPedidos = Uri.parse('$pedidosBaseUrl/cerrar-mesa');
+        response = await http.post(
+          urlPedidos,
+          headers: headers,
+          body: jsonEncode({"mesaId": idMesa}),
+        );
+      }
 
-  try {
-    final response = await http.post(
-      url,
-      headers: await _getAuthHeaders(),
-    );
+      _throwIfUnauthorized(response);
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return _parseTotalCobrado(response.body);
+      }
 
-      // Si el backend devuelve totalCobrado lo capturamos
-      final totalCobrado =
-          double.tryParse(data['totalCobrado']?.toString() ?? '0') ?? 0.0;
-
-      return totalCobrado;
-    } else {
-      throw Exception('Error al cerrar mesa: ${response.statusCode}');
+      throw Exception(_extractBackendMessage(
+        response.body,
+        fallback: 'Error al cerrar mesa: ${response.statusCode}',
+      ));
+    } catch (e) {
+      throw Exception('No se pudo cerrar la mesa: $e');
     }
-  } catch (e) {
-    rethrow;
   }
-}
+
+  double _parseTotalCobrado(String body) {
+    if (body.trim().isEmpty) {
+      return 0.0;
+    }
+
+    try {
+      final data = jsonDecode(body);
+      if (data is! Map<String, dynamic>) {
+        return 0.0;
+      }
+
+      final totalRaw = data['totalCobrado'] ??
+          (data['data'] is Map<String, dynamic>
+              ? data['data']['totalCobrado']
+              : null);
+      if (totalRaw != null) {
+        return double.tryParse(totalRaw.toString()) ?? 0.0;
+      }
+
+      final facturacion = data['facturacion'];
+      if (facturacion is Map<String, dynamic>) {
+        final totalFinal = facturacion['totalFinal'];
+        if (totalFinal != null) {
+          return double.tryParse(totalFinal.toString()) ?? 0.0;
+        }
+      }
+    } catch (_) {
+      // Ignorado: devolvemos 0.0 para respuestas no JSON
+    }
+
+    return 0.0;
+  }
 
 
   // 3. ABRIR / OCUPAR MESA
-Future<void> abrirMesa(int idMesa, int idMozo) async {
-  final url = Uri.parse('$baseUrl/$idMesa/abrir');
+  Future<void> abrirMesa(int idMesa, int idMozo) async {
+    final url = Uri.parse('$baseUrl/$idMesa/abrir');
+    debugPrint("🌐 ABRIENDO MESA: $url");
 
-  debugPrint("🌐 ABRIENDO MESA: $url");
+    try {
+      final response = await http.post(
+        url,
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          "idMozo": idMozo,
+        }),
+      );
+      _throwIfUnauthorized(response);
 
-  try {
-    final response = await http.post(
-      url,
-      headers: await _getAuthHeaders(),// Inyectamos headers con token
-      body: jsonEncode({
-        "idMozo": idMozo,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Error al abrir mesa: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        throw Exception(_extractBackendMessage(
+          response.body,
+          fallback: 'Error al abrir mesa: ${response.statusCode}',
+        ));
+      }
+    } catch (e) {
+      throw Exception('No se pudo abrir la mesa: $e');
     }
-  } catch (e) {
-    rethrow;
   }
-}
-
-
 }

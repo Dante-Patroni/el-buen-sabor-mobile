@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -20,6 +21,22 @@ class AuthDataSource {
 
   AuthDataSource({http.Client? client}) : _client = client ?? http.Client();
 
+  String _extractBackendMessage(String body,
+      {String fallback = 'Error de autenticación'}) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['mensaje'] ?? decoded['message'] ?? decoded['error'];
+        if (message != null && message.toString().trim().isNotEmpty) {
+          return message.toString();
+        }
+      }
+    } catch (_) {
+      // ignorado: usamos fallback
+    }
+    return fallback;
+  }
+
   // ===========================================================================
   // 🔑 LOGIN (POST /usuarios/login)
   // ===========================================================================
@@ -32,22 +49,27 @@ class AuthDataSource {
         Uri.parse('$_baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'legajo': legajo, 'password': password}),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
+        if (data['token'] == null || data['usuario'] == null) {
+          throw Exception('Respuesta inválida del servidor');
+        }
         return {
           'token': data['token'],
           'usuario': Usuario.fromJson(data['usuario']),
         };
       } else {
-        final data = jsonDecode(response.body);
-        final errorMessage =
-            data['mensaje'] ?? data['message'] ?? 'Error de autenticación';
-        throw Exception(errorMessage);
+        throw Exception(_extractBackendMessage(
+          response.body,
+          fallback: 'Error de autenticación',
+        ));
       }
     } on SocketException {
       throw Exception('Error de conexión');
+    } on TimeoutException {
+      throw Exception('Tiempo de espera agotado');
     }
   }
 }

@@ -4,10 +4,10 @@ import '../../presentation/models/mesa_ui_model.dart';
 import 'package:provider/provider.dart';
 import 'package:el_buen_sabor_app/features/pedidos/presentation/pages/menu_moderno_page.dart';
 import 'package:el_buen_sabor_app/features/mesas/presentation/pages/ver_pedido_mesa_screen.dart';
-import 'package:el_buen_sabor_app/core/services/storage_service.dart';
 import 'package:el_buen_sabor_app/features/pedidos/domain/models/pedido.dart';
 // IMPORTS LOGIN
 import 'package:el_buen_sabor_app/features/auth/presentation/pages/login_page.dart';
+import 'package:el_buen_sabor_app/features/auth/presentation/providers/auth_provider.dart';
 // ✅ IMPORT CORRECTO: Usamos el Provider en lugar de HTTP directo
 import '../providers/mesa_provider.dart';
 
@@ -234,8 +234,8 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                     backgroundColor: Colors.red.shade500,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
-                    _mostrarDialogoEliminarPedidoCompleto(context);
+                  onPressed: () async {
+                    await _mostrarDialogoEliminarPedidoCompleto(context);
                   },
                   icon: const Icon(Icons.delete),
                   label: const Text("ELIMINAR PEDIDO",
@@ -300,8 +300,8 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// 1. Elimina el token de autenticación del almacenamiento local
   /// 2. Navega a LoginPage y limpia el historial de navegación
   void _logout(BuildContext context) async {
-    final storage = StorageService();
-    await storage.deleteToken(); // 1. Borrar token
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.logout();
 
     if (!context.mounted) return;
 
@@ -505,8 +505,10 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// - Elimina todos los items del pedido
   /// - Devuelve el stock correspondiente
   /// - Muestra confirmación al usuario
-  void _mostrarDialogoEliminarPedidoCompleto(BuildContext context) {
+  Future<void> _mostrarDialogoEliminarPedidoCompleto(BuildContext context) async {
     final provider = Provider.of<PedidoProvider>(context, listen: false);
+    await provider.cargarPedidosDeMesa(_mesaActual.numero.toString());
+    if (!context.mounted) return;
 
     // Filtrar pedidos activos de esta mesa
     final pedidosDeMesa = provider.listaPedidos.where((p) {
@@ -541,15 +543,39 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
               Navigator.pop(dialogContext);
 
               // Eliminar cada pedido individualmente
-              for (var pedido in pedidosDeMesa) {
-                await provider.borrarPedidoHistorico(pedido.id ?? 0);
+              final idsUnicos = pedidosDeMesa
+                  .map((p) => p.id)
+                  .whereType<int>()
+                  .toSet()
+                  .toList();
+
+              if (idsUnicos.isEmpty) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("No se pudo identificar el pedido a eliminar"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+                return;
+              }
+
+              var huboError = false;
+              for (final pedidoId in idsUnicos) {
+                final ok = await provider.borrarPedidoHistorico(pedidoId);
+                if (!ok) {
+                  huboError = true;
+                }
               }
               // Mostrar confirmación
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Pedido eliminado exitosamente"),
-                    backgroundColor: Colors.red,
+                  SnackBar(
+                    content: Text(huboError
+                        ? "No se pudieron eliminar todos los pedidos"
+                        : "Pedido eliminado exitosamente"),
+                    backgroundColor: huboError ? Colors.orange : Colors.red,
                   ),
                 );
               }

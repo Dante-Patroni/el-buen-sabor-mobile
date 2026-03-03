@@ -60,6 +60,11 @@ class PedidoProvider extends ChangeNotifier {
   /// Getter para obtener mensajes de error si algo falla.
   String get errorMessage => _errorMessage;
 
+  String _normalizarError(Object e, {String fallback = 'Error inesperado'}) {
+    final msg = e.toString().replaceAll('Exception: ', '').trim();
+    return msg.isEmpty ? fallback : msg;
+  }
+
   /// **Propiedad Computada (Computed Property)**
   /// Calcula el total monetario del carrito en tiempo real.
   /// Se usa `.fold` que es como un bucle `for` pero funcional y más elegante.
@@ -102,7 +107,10 @@ class PedidoProvider extends ChangeNotifier {
       listaPedidos = pedidosBackend;
     } catch (e) {
       // Si algo falla (ej: sin internet), guardamos el error para mostrarlo
-      _errorMessage = "No se pudo conectar con el servidor.";
+      _errorMessage = _normalizarError(
+        e,
+        fallback: "No se pudo conectar con el servidor.",
+      );
       debugPrint("Error en inicializarDatos: $e");
     } finally {
       // El bloque `finally` se ejecuta SIEMPRE, haya error o no.
@@ -192,7 +200,8 @@ class PedidoProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage =
+          _normalizarError(e, fallback: 'No se pudo confirmar el pedido.');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -246,17 +255,43 @@ class PedidoProvider extends ChangeNotifier {
   /// 2. Luego llamamos al servidor.
   /// Si el servidor falla, revertimos el cambio (recargamos).
   /// Esto hace que la app se sienta instantánea.
-  Future<void> borrarPedidoHistorico(int id) async {
+  Future<bool> borrarPedidoHistorico(int id) async {
     try {
-      // 1. UI update
+      // 1. Server API Call (si falla, no tocamos la UI local)
+      await pedidoRepository.deletePedido(id);
+
+      // 2. UI update
       listaPedidos.removeWhere((p) => p.id == id);
       notifyListeners();
-
-      // 2. Server API Call
-      await pedidoRepository.deletePedido(id);
+      return true;
     } catch (e) {
-      // Rollback (Deshacer) si falla: volvemos a cargar todo
-      await inicializarDatos();
+      _errorMessage = _normalizarError(
+        e,
+        fallback: 'No se pudo eliminar el pedido.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> cargarPedidosDeMesa(String mesa) async {
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      if (menuPlatos.isEmpty) {
+        menuPlatos = await pedidoRepository.getMenu();
+      }
+      listaPedidos = await pedidoRepository.getPedidosPorMesa(mesa);
+    } catch (e) {
+      _errorMessage = _normalizarError(
+        e,
+        fallback: "No se pudo cargar los pedidos de la mesa.",
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -278,7 +313,8 @@ class PedidoProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage =
+          _normalizarError(e, fallback: 'No se pudo modificar el pedido.');
       _isLoading = false;
       notifyListeners();
       return false;

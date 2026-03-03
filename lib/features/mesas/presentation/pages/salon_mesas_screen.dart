@@ -197,9 +197,11 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
           // Logout: responsabilidad de la UI
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            onPressed: () {
-              authProvider.logout();
-              Navigator.of(context).pushReplacement(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await authProvider.logout();
+              if (!mounted) return;
+              navigator.pushReplacement(
                 MaterialPageRoute(builder: (_) => const LoginPage()),
               );
             },

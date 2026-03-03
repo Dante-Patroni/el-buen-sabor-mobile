@@ -22,6 +22,11 @@ class MesaProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String get error => _error;
 
+  String _normalizarError(Object e, {String fallback = 'Error inesperado'}) {
+    final msg = e.toString().replaceAll('Exception: ', '').trim();
+    return msg.isEmpty ? fallback : msg;
+  }
+
   // =========================
   // Caso de uso: cargar mesas
   // =========================
@@ -33,8 +38,8 @@ class MesaProvider extends ChangeNotifier {
     try {
       final mesasDominio = await _repository.getMesas();
       _mesas = mesasDominio.map(MesaUiModel.fromDomain).toList();
-    } catch (_) {
-      _error = 'Error cargando mesas';
+    } catch (e) {
+      _error = _normalizarError(e, fallback: 'Error cargando mesas');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -49,7 +54,9 @@ class MesaProvider extends ChangeNotifier {
       await _repository.abrirMesa(idMesa, idMozo);
       await cargarMesas();
       return true;
-    } catch (_) {
+    } catch (e) {
+      _error = _normalizarError(e, fallback: 'Error al abrir mesa');
+      notifyListeners();
       return false;
     }
   }
@@ -66,8 +73,8 @@ Future<double?> cerrarMesa(int idMesa) async {
     final total = await _repository.cerrarMesa(idMesa);
     await cargarMesas();
     return total;
-  } catch (_) {
-    _error = 'Error al cerrar mesa';
+  } catch (e) {
+    _error = _normalizarError(e, fallback: 'Error al cerrar mesa');
     return null;
   } finally {
     _isLoading = false;
