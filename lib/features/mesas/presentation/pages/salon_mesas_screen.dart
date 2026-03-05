@@ -40,6 +40,11 @@ class SalonMesasScreen extends StatefulWidget {
   const SalonMesasScreen({super.key});
 
   @override
+  /**
+   * @description Crea el estado de la pantalla principal de mesas.
+   * @returns {State<SalonMesasScreen>} Estado de la pantalla.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<SalonMesasScreen> createState() => _SalonMesasScreenState();
 }
 
@@ -50,6 +55,11 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
   // ==========================================================================
 
   @override
+  /**
+   * @description Inicializa la carga de mesas luego del primer frame.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void initState() {
     super.initState();
 
@@ -76,6 +86,12 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
   /// NOTA:
   /// La UI NO valida reglas de negocio.
   /// Solo reacciona al estado recibido.
+  /**
+   * @description Maneja el tap sobre una mesa y navega segun su estado.
+   * @param {MesaUiModel} mesa - Mesa seleccionada.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de navegacion o carga.
+   */
   Future<void> _onMesaTap(MesaUiModel mesa) async {
     if (mesa.estado == 'libre') {
       _mostrarDialogoAbrir(mesa);
@@ -107,6 +123,12 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
   /// - pertenece a la UI
   /// - NO abre mesas directamente
   /// - delega la ejecución al Provider
+  /**
+   * @description Muestra dialogo para abrir mesa y asignar mozo.
+   * @param {MesaUiModel} mesa - Mesa a abrir.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void _mostrarDialogoAbrir(MesaUiModel mesa) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final mesaProvider = Provider.of<MesaProvider>(context, listen: false);
@@ -178,6 +200,12 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
   // ==========================================================================
 
   @override
+  /**
+   * @description Construye la UI del salon de mesas.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final nombreMozo = authProvider.usuario?.nombre ?? "Desconocido";
@@ -269,12 +297,25 @@ class _MesaCard extends StatelessWidget {
   final MesaUiModel mesa;
   final VoidCallback onTap;
 
+  /**
+   * @description Crea la tarjeta visual de una mesa.
+   * @param {MesaUiModel} mesa - Mesa a renderizar.
+   * @param {VoidCallback} onTap - Callback al tocar la tarjeta.
+   * @returns { _MesaCard } Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const _MesaCard({
     required this.mesa,
     required this.onTap,
   });
 
   @override
+  /**
+   * @description Construye la UI de la tarjeta de mesa.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     final bool esOcupada = mesa.estado == 'ocupada';
     final Color colorFondo =

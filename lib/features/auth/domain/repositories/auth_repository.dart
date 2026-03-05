@@ -8,8 +8,12 @@
 /// AuthProvider → [AuthRepository] → AuthRepositoryImpl → AuthDataSource → Backend
 /// ```
 abstract class AuthRepository {
-  /// Autentica un usuario con legajo y contraseña.
-  /// Retorna un Map con 'token' (String) y 'usuario' (Usuario).
-  /// Lanza Exception si las credenciales son inválidas o hay error de red.
+  /**
+   * @description Autentica un usuario con legajo y contrasena.
+   * @param {String} legajo - Legajo del empleado.
+   * @param {String} password - Contrasena del usuario.
+   * @returns {Future<Map<String, dynamic>>} Token y usuario autenticado.
+   * @throws {Exception} Credenciales invalidas o error de red.
+   */
   Future<Map<String, dynamic>> login(String legajo, String password);
 }

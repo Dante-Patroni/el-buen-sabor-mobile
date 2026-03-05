@@ -1,6 +1,20 @@
 import '../../domain/models/pedido.dart';
 
 class PedidoModel extends Pedido {
+  /**
+   * @description Crea un modelo de pedido a partir de sus propiedades.
+   * @param {int?} id - Id del pedido.
+   * @param {String} mesa - Mesa asociada.
+   * @param {String} cliente - Cliente asociado.
+   * @param {int} platoId - Id del plato.
+   * @param {DateTime?} fecha - Fecha del pedido.
+   * @param {EstadoPedido} estado - Estado del pedido.
+   * @param {double} total - Total del item.
+   * @param {int} cantidad - Cantidad solicitada.
+   * @param {String?} aclaracion - Nota del pedido.
+   * @returns {PedidoModel} Instancia creada.
+   * @throws {Error} No lanza errores por diseno.
+   */
   PedidoModel({
     super.id,
     required super.mesa,
@@ -19,6 +33,12 @@ class PedidoModel extends Pedido {
   // ==========================================================
 
   // 🔌 Mapper: Convierte Entidad (Dominio) -> Modelo (Data)
+  /**
+   * @description Convierte una entidad de dominio a modelo de datos.
+   * @param {Pedido} pedido - Entidad de dominio.
+   * @returns {PedidoModel} Modelo equivalente.
+   * @throws {Error} No lanza errores por diseno.
+   */
   factory PedidoModel.fromEntity(Pedido pedido) {
     return PedidoModel(
       id: pedido.id,
@@ -39,6 +59,12 @@ class PedidoModel extends Pedido {
   // ==========================================================
 
   // 📥 API -> APP (fromJson)
+  /**
+   * @description Construye un modelo desde JSON del backend.
+   * @param {Map<String, dynamic>} json - Datos del backend.
+   * @returns {PedidoModel} Modelo parseado.
+   * @throws {Error} No lanza errores por diseno.
+   */
   factory PedidoModel.fromJson(Map<String, dynamic> json) {
     return PedidoModel(
       id: json['id'],
@@ -59,6 +85,11 @@ class PedidoModel extends Pedido {
   }
 
   // 📤 APP -> API (toJson)
+  /**
+   * @description Serializa el pedido a JSON para API.
+   * @returns {Map<String, dynamic>} JSON del pedido.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
@@ -75,6 +106,12 @@ class PedidoModel extends Pedido {
   }
 
   // 📥 SQLite -> APP (fromMap)
+  /**
+   * @description Construye un modelo desde un mapa SQLite.
+   * @param {Map<String, dynamic>} map - Registro de SQLite.
+   * @returns {PedidoModel} Modelo parseado.
+   * @throws {Error} No lanza errores por diseno.
+   */
   factory PedidoModel.fromMap(Map<String, dynamic> map) {
     return PedidoModel(
       id: map['id'],
@@ -91,6 +128,11 @@ class PedidoModel extends Pedido {
   }
 
   // 📤 APP -> SQLite (toMap)
+  /**
+   * @description Serializa el pedido a un mapa para SQLite.
+   * @returns {Map<String, dynamic>} Mapa para SQLite.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -110,6 +152,12 @@ class PedidoModel extends Pedido {
   // 3. HELPERS (Tus funciones originales intactas)
   // ==========================================================
 
+  /**
+   * @description Mapea un estado crudo a EstadoPedido.
+   * @param {dynamic} estadoValue - Valor recibido.
+   * @returns {EstadoPedido} Estado normalizado.
+   * @throws {Error} No lanza errores por diseno.
+   */
   static EstadoPedido _mapEstado(dynamic estadoValue) {
     if (estadoValue == null) return EstadoPedido.pendiente;
     final String estadoString = estadoValue.toString().toLowerCase().trim();
@@ -129,6 +177,12 @@ class PedidoModel extends Pedido {
   }
 
   // ✅ Tu parser de IDs es excelente, lo dejamos tal cual
+  /**
+   * @description Parsea el platoId desde distintas claves posibles.
+   * @param {Map<String, dynamic>} json - Payload con posibles claves.
+   * @returns {int} Id del plato o 0 si no hay valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   static int _parsePlatoId(Map<String, dynamic> json) {
     final val = json['platoId'] ?? json['PlatoId'] ?? json['plato_id'];
     if (val == null) return 0;

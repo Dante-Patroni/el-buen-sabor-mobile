@@ -9,6 +9,15 @@ class DetallePlatoModal extends StatefulWidget {
   final String aclaracionInicial;
   final String textoBoton;
 
+  /**
+   * @description Crea el modal de detalle de plato.
+   * @param {Plato} plato - Plato a mostrar.
+   * @param {int} cantidadInicial - Cantidad inicial.
+   * @param {String} aclaracionInicial - Aclaracion inicial.
+   * @param {String} textoBoton - Texto del boton principal.
+   * @returns {DetallePlatoModal} Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const DetallePlatoModal({
     super.key,
     required this.plato,
@@ -18,6 +27,11 @@ class DetallePlatoModal extends StatefulWidget {
   });
 
   @override
+  /**
+   * @description Crea el estado del modal de detalle.
+   * @returns {State<DetallePlatoModal>} Estado del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<DetallePlatoModal> createState() => _DetallePlatoModalState();
 }
 
@@ -26,7 +40,12 @@ class _DetallePlatoModalState extends State<DetallePlatoModal> {
 late TextEditingController _aclaracionController;
 
 @override
-void initState() {
+  /**
+   * @description Inicializa la cantidad y el controlador de aclaraciones.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
+ void initState() {
   super.initState();
   cantidad = widget.cantidadInicial;
   _aclaracionController =
@@ -34,7 +53,12 @@ void initState() {
 }
 
 @override
-  void dispose() {
+  /**
+   * @description Libera el controlador de texto de aclaraciones.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
+   void dispose() {
     _aclaracionController.dispose();
     super.dispose();
   }
@@ -43,6 +67,12 @@ void initState() {
 
 
   // 👇 1. FUNCIÓN PARA CORREGIR LA URL (IP DE LA PC)
+  /**
+   * @description Construye la URL final de la imagen del plato.
+   * @param {String} path - Ruta o URL original.
+   * @returns {String} URL final para Image.network.
+   * @throws {Error} No lanza errores por diseno.
+   */
   String _construirUrlImagen(String path) {
     if (path.isEmpty) return "";
     if (path.startsWith("http")) return path;
@@ -52,10 +82,20 @@ void initState() {
   }
 
 
+  /**
+   * @description Incrementa la cantidad seleccionada.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores.
+   */
   void _incrementar() {
     setState(() => cantidad++);
   }
 
+  /**
+   * @description Decrementa la cantidad seleccionada si es mayor a 1.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores.
+   */
   void _decrementar() {
     if (cantidad > 1) {
       setState(() => cantidad--);
@@ -63,6 +103,12 @@ void initState() {
   }
 
   @override
+  /**
+   * @description Construye la UI del modal de detalle de plato.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     // Preparamos la URL de la imagen
     final urlImagen = _construirUrlImagen(widget.plato.imagenPath);

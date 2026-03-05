@@ -21,6 +21,20 @@ class Pedido {
   final int cantidad;
   final String? aclaracion; // Ej: "Sin cebolla"
 
+  /**
+   * @description Crea una instancia de Pedido.
+   * @param {int?} id - Identificador del pedido.
+   * @param {String} mesa - Identificador o numero de mesa.
+   * @param {String} cliente - Nombre del cliente.
+   * @param {int} platoId - Identificador del plato.
+   * @param {DateTime?} fecha - Fecha del pedido (default: ahora).
+   * @param {EstadoPedido} estado - Estado del pedido.
+   * @param {double} total - Total del item o pedido.
+   * @param {int} cantidad - Cantidad del plato.
+   * @param {String?} aclaracion - Nota del pedido.
+   * @returns {Pedido} Instancia creada.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Pedido({
     this.id,
     required this.mesa,
@@ -36,6 +50,19 @@ class Pedido {
 
   // 🛠️ Útil para modificar la cantidad sin perder los otros datos
   // (Como las clases son 'final', no puedes hacer pedido.cantidad = 2)
+  /**
+   * @description Crea una copia del pedido con cambios parciales.
+   * @param {int?} id - Nuevo id opcional.
+   * @param {String?} mesa - Nueva mesa opcional.
+   * @param {String?} cliente - Nuevo cliente opcional.
+   * @param {int?} platoId - Nuevo platoId opcional.
+   * @param {EstadoPedido?} estado - Nuevo estado opcional.
+   * @param {double?} total - Nuevo total opcional.
+   * @param {int?} cantidad - Nueva cantidad opcional.
+   * @param {String?} aclaracion - Nueva aclaracion opcional.
+   * @returns {Pedido} Copia con cambios aplicados.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Pedido copyWith({
     int? id,
     String? mesa,

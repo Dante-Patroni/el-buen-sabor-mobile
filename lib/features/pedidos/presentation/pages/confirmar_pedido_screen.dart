@@ -5,9 +5,20 @@ import 'package:provider/provider.dart';
 import '../providers/pedido_provider.dart';
 
 class ConfirmarPedidoScreen extends StatelessWidget {
+  /**
+   * @description Crea la pantalla de confirmacion de pedido.
+   * @returns {ConfirmarPedidoScreen} Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const ConfirmarPedidoScreen({super.key});
 
   @override
+  /**
+   * @description Construye la UI de confirmacion de pedido.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     // ✅ CORRECCIÓN 2: Tipado correcto
     final provider = Provider.of<PedidoProvider>(context);
@@ -173,6 +184,12 @@ class ConfirmarPedidoScreen extends StatelessWidget {
     );
   }
 
+  /**
+   * @description Muestra un dialogo de exito al enviar pedido.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void _mostrarExito(BuildContext context) {
     showDialog(
       context: context,

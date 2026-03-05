@@ -27,6 +27,11 @@ class MesaMenuScreen extends StatefulWidget {
   const MesaMenuScreen({super.key, required this.mesa});
 
   @override
+  /**
+   * @description Crea el estado de la pantalla de menu de mesa.
+   * @returns {State<MesaMenuScreen>} Estado de la pantalla.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<MesaMenuScreen> createState() => _MesaMenuScreenState();
 }
 
@@ -42,6 +47,11 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   // ===========================================================================
   @override
 //initState para cargar datos iniciales
+  /**
+   * @description Inicializa el estado y refresca datos luego del primer frame.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void initState() {
     super.initState();
     _mesaActual = widget.mesa;
@@ -55,7 +65,13 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   // ===========================================================================
   // 3. WIDGET BUILD - INTERFAZ PRINCIPAL
   // ===========================================================================
-@override
+ @override
+  /**
+   * @description Construye la UI principal del menu de la mesa.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -277,6 +293,11 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// 1. Al iniciar la pantalla
   /// 2. Cuando el usuario hace pull-to-refresh
   /// 3. Después de ciertas operaciones como crear pedidos
+  /**
+   * @description Refresca los datos de la mesa desde el backend.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<void> _refrescarDatosMesa() async {
     // Verificar que el widget aún esté montado antes de actualizar el estado
     if (!mounted) return;
@@ -299,6 +320,12 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// **Flujo:**
   /// 1. Elimina el token de autenticación del almacenamiento local
   /// 2. Navega a LoginPage y limpia el historial de navegación
+  /**
+   * @description Cierra sesion y redirige a login.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {void} No retorna valor.
+   * @throws {Exception} Error al cerrar sesion.
+   */
   void _logout(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     await authProvider.logout();
@@ -329,6 +356,12 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// - Errores de conexión se muestran al usuario
   /// - Estados null se manejan apropiadamente
   /// - Verificaciones de mounted previenen crashes
+  /**
+   * @description Cierra la mesa y ejecuta el flujo de facturacion.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<void> _cerrarMesaBackend(BuildContext context) async {
     // ------------------------------------------------
     // 1. DIÁLOGO DE CONFIRMACIÓN
@@ -480,6 +513,13 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// **Parámetros:**
   /// - `context`: Contexto de construcción
   /// - `mensaje`: Mensaje de error a mostrar
+  /**
+   * @description Muestra un dialogo de error al usuario.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @param {String} mensaje - Mensaje a mostrar.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void _mostrarError(BuildContext context, String mensaje) {
     if (!context.mounted) return; // ✅ Safety check también aquí
     showDialog(
@@ -505,6 +545,12 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// - Elimina todos los items del pedido
   /// - Devuelve el stock correspondiente
   /// - Muestra confirmación al usuario
+  /**
+   * @description Muestra dialogo para eliminar el pedido completo de la mesa.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error al cargar o eliminar pedidos.
+   */
   Future<void> _mostrarDialogoEliminarPedidoCompleto(BuildContext context) async {
     final provider = Provider.of<PedidoProvider>(context, listen: false);
     await provider.cargarPedidosDeMesa(_mesaActual.numero.toString());

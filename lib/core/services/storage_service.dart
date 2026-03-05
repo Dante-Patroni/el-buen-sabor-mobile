@@ -47,18 +47,18 @@ class StorageService {
   /// `_internal()`: Constructor privado nombrado
   static final StorageService _instance = StorageService._internal();
 
-  /// Factory constructor que siempre retorna la misma instancia
-  ///
-  /// EJEMPLO DE USO:
-  /// ```dart
-  /// final storage = StorageService(); // Siempre retorna _instance
-  /// final storage2 = StorageService(); // Misma instancia que storage
-  /// ```
+  /**
+   * @description Factory constructor que retorna la unica instancia del servicio.
+   * @returns {StorageService} Instancia singleton del servicio.
+   * @throws {Error} No lanza errores por diseno.
+   */
   factory StorageService() => _instance;
 
-  /// Constructor privado nombrado
-  /// Solo se llama una vez cuando se crea _instance
-  /// El _ lo hace privado (no se puede llamar desde fuera)
+  /**
+   * @description Constructor privado para inicializar el singleton.
+   * @returns {StorageService} Instancia creada internamente.
+   * @throws {Error} No lanza errores por diseno.
+   */
   StorageService._internal();
 
   // ============================================================================
@@ -89,21 +89,12 @@ class StorageService {
   // 💾 OPERACIONES CRUD - Create, Read, Update, Delete
   // ============================================================================
 
-  /// 📥 GUARDAR TOKEN (Create/Update)
-  ///
-  /// Guarda el token JWT de forma segura después del login exitoso.
-  /// Si ya existe un token, lo sobrescribe.
-  ///
-  /// FLUJO DE AUTENTICACIÓN:
-  /// 1. Usuario ingresa credenciales
-  /// 2. Backend valida y retorna JWT
-  /// 3. App guarda JWT con este método
-  /// 4. JWT se incluye en headers de futuras peticiones
-  ///
-  /// PARÁMETROS:
-  /// - token: String del JWT recibido del backend
-  ///
-  /// RETORNA: `Future<void>` - Operación asíncrona sin valor de retorno
+  /**
+   * @description Guarda el token JWT de forma segura; sobrescribe si ya existe.
+   * @param {String} token - Token JWT recibido del backend.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de almacenamiento seguro.
+   */
   Future<void> saveToken(String token) async {
     try {
       // Escribe el token en almacenamiento seguro
@@ -120,28 +111,11 @@ class StorageService {
     }
   }
 
-  /// 📤 LEER TOKEN (Read)
-  ///
-  /// Recupera el token JWT guardado previamente.
-  /// Se usa para verificar si el usuario tiene sesión activa.
-  ///
-  /// CASOS DE USO:
-  /// - Al iniciar la app (verificar si hay sesión)
-  /// - Antes de cada petición HTTP (incluir en headers)
-  /// - Para validar permisos del usuario
-  ///
-  /// RETORNA: `Future<String?>` - Token si existe, null si no hay token guardado
-  ///
-  /// EJEMPLO DE USO:
-  /// ```dart
-  /// final token = await StorageService().getToken();
-  /// if (token != null) {
-  ///   // Usuario tiene sesión activa
-  ///   headers['Authorization'] = 'Bearer $token';
-  /// } else {
-  ///   // Redirigir a login
-  /// }
-  /// ```
+  /**
+   * @description Recupera el token JWT almacenado de forma segura.
+   * @returns {Future<String?>} Token si existe; null si no hay token.
+   * @throws {Error} No lanza; retorna null ante error.
+   */
   Future<String?> getToken() async {
     try {
       // Lee el valor asociado a la clave _keyToken
@@ -153,18 +127,11 @@ class StorageService {
     }
   }
 
-  /// 🗑️ BORRAR TOKEN (Delete)
-  ///
-  /// Elimina el token JWT del almacenamiento seguro.
-  /// Se usa cuando el usuario cierra sesión (logout).
-  ///
-  /// FLUJO DE LOGOUT:
-  /// 1. Usuario presiona "Cerrar Sesión"
-  /// 2. Se llama a este método para borrar el token
-  /// 3. Se limpia el estado de la app (providers)
-  /// 4. Se redirige a la pantalla de login
-  ///
-  /// RETORNA: `Future<void>` - Operación asíncrona sin valor de retorno
+  /**
+   * @description Elimina el token JWT del almacenamiento seguro.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error al eliminar el token.
+   */
   Future<void> deleteToken() async {
     try {
       await _storage.delete(key: _keyToken);

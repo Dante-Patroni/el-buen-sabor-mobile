@@ -34,6 +34,11 @@ class PedidoDataSource {
   // 🔐 HELPER PRIVADO: JWT Auth Headers
   // ---------------------------------------------------------------------------
 
+  /**
+   * @description Construye headers HTTP con token JWT.
+   * @returns {Future<Map<String, String>>} Headers con Authorization.
+   * @throws {Exception} Sesion expirada o token ausente.
+   */
   Future<Map<String, String>> _getAuthHeaders() async {
     final token = await _storage.getToken();
     if (token == null || token.isEmpty) {
@@ -45,12 +50,25 @@ class PedidoDataSource {
     };
   }
 
+  /**
+   * @description Lanza error si la respuesta es 401/403.
+   * @param {http.Response} response - Respuesta HTTP.
+   * @returns {void} No retorna valor.
+   * @throws {Exception} Sesion expirada.
+   */
   void _throwIfUnauthorized(http.Response response) {
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw Exception(_sessionExpiredMessage);
     }
   }
 
+  /**
+   * @description Extrae un mensaje de error legible desde el body.
+   * @param {String} body - Cuerpo de la respuesta HTTP.
+   * @param {String} fallback - Mensaje por defecto.
+   * @returns {String} Mensaje de error.
+   * @throws {Error} No lanza errores; devuelve fallback si falla el parseo.
+   */
   String _extractBackendMessage(String body, {String fallback = 'Error de servidor'}) {
     try {
       final decoded = jsonDecode(body);
@@ -72,7 +90,13 @@ class PedidoDataSource {
 
   /// Descarga la lista de platos desde el backend.
   /// Si la conexión falla, retorna los platos guardados localmente en SQLite.
-  Future<List<PlatoModel>> getMenu() async {
+  /**
+   * @description Obtiene el menu desde backend con fallback offline.
+   * @param {bool} forceOnline - Si es true, falla si no puede obtener del backend.
+   * @returns {Future<List<PlatoModel>>} Lista de platos.
+   * @throws {Exception} Error de sesion o backend.
+   */
+  Future<List<PlatoModel>> getMenu({bool forceOnline = false}) async {
     try {
       final url = Uri.parse('$_baseUrl/platos');
       final response = await http
@@ -97,15 +121,26 @@ class PedidoDataSource {
       if (e.toString().contains(_sessionExpiredMessage)) {
         rethrow;
       }
+      if (forceOnline) {
+        throw Exception('No se pudo actualizar el menu desde el servidor.');
+      }
       debugPrint('⚠️ Error Menu Online ($e). Usando modo offline.');
       return await _getLocalMenu();
     } catch (e) {
+      if (forceOnline) {
+        throw Exception('No se pudo actualizar el menu desde el servidor.');
+      }
       debugPrint('⚠️ Error Menu Online ($e). Usando modo offline.');
       return await _getLocalMenu();
     }
   }
 
   /// Lee el menú guardado en SQLite (fallback offline).
+  /**
+   * @description Lee el menu desde SQLite como fallback offline.
+   * @returns {Future<List<PlatoModel>>} Lista de platos locales.
+   * @throws {Exception} Error de lectura en SQLite.
+   */
   Future<List<PlatoModel>> _getLocalMenu() async {
     final db = await _dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query('platos');
@@ -114,6 +149,12 @@ class PedidoDataSource {
   }
 
   /// Guarda el menú descargado en SQLite (sobrescribe lo anterior).
+  /**
+   * @description Sincroniza el menu en SQLite.
+   * @param {List<PlatoModel>} platos - Platos descargados.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de escritura en SQLite.
+   */
   Future<void> _syncMenuLocal(List<PlatoModel> platos) async {
     final db = await _dbHelper.database;
     await db.transaction((txn) async {
@@ -132,6 +173,11 @@ class PedidoDataSource {
   // 🌳 RUBROS (GET /rubros)
   // ===========================================================================
 
+  /**
+   * @description Obtiene rubros desde el backend.
+   * @returns {Future<List<Rubro>>} Lista de rubros.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<List<Rubro>> getRubros() async {
     try {
       final url = Uri.parse('$_baseUrl/rubros');
@@ -168,6 +214,11 @@ class PedidoDataSource {
   /// Obtiene el historial de pedidos del backend.
   /// La respuesta del backend es jerárquica (ticket → detalles).
   /// Este método la "aplana" en una lista de PedidoModel para facilitar el uso.
+  /**
+   * @description Obtiene pedidos y los transforma a una lista plana.
+   * @returns {Future<List<PedidoModel>>} Lista de pedidos.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<List<PedidoModel>> getPedidos() async {
     try {
       final response = await http.get(
@@ -192,6 +243,12 @@ class PedidoDataSource {
     }
   }
 
+  /**
+   * @description Obtiene pedidos filtrados por mesa.
+   * @param {String} mesa - Numero o id de mesa.
+   * @returns {Future<List<PedidoModel>>} Lista de pedidos de la mesa.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<List<PedidoModel>> getPedidosPorMesa(String mesa) async {
     try {
       final response = await http.get(
@@ -220,6 +277,13 @@ class PedidoDataSource {
   // 🚀 INSERTAR PEDIDO (POST /pedidos)
   // ===========================================================================
 
+  /**
+   * @description Inserta un pedido con items en el backend.
+   * @param {String} mesaId - Identificador de mesa.
+   * @param {List<Pedido>} carrito - Items del pedido.
+   * @returns {Future<int>} Id del pedido creado.
+   * @throws {Exception} Error de red, backend o validacion.
+   */
   Future<int> insertPedido(String mesaId, List<Pedido> carrito) async {
     final url = Uri.parse('$_baseUrl/pedidos');
     debugPrint('🚀 [DataSource] Enviando a $url');
@@ -284,6 +348,12 @@ class PedidoDataSource {
   // 🗑️ ELIMINAR PEDIDO (DELETE /pedidos/:id)
   // ===========================================================================
 
+  /**
+   * @description Elimina un pedido completo por id.
+   * @param {int} id - Id del pedido.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<void> deletePedido(int id) async {
     final url = Uri.parse('$_baseUrl/pedidos/$id');
     try {
@@ -306,6 +376,14 @@ class PedidoDataSource {
   // 🔄 MODIFICAR PEDIDO (PUT /pedidos/modificar)
   // ===========================================================================
 
+  /**
+   * @description Modifica un pedido completo en el backend.
+   * @param {int} pedidoId - Id del pedido.
+   * @param {String} mesa - Numero o id de mesa.
+   * @param {List<Pedido>} pedidoModificado - Items modificados.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red, backend o validacion.
+   */
   Future<void> modificarPedido(
       int pedidoId, String mesa, List<Pedido> pedidoModificado) async {
     final url = Uri.parse('$_baseUrl/pedidos/modificar');
@@ -364,6 +442,12 @@ class PedidoDataSource {
   // 🔧 HELPERS PRIVADOS
   // ===========================================================================
 
+  /**
+   * @description Mapea un estado crudo a EstadoPedido.
+   * @param {String?} estado - Estado en string.
+   * @returns {EstadoPedido} Estado normalizado.
+   * @throws {Error} No lanza errores por diseno.
+   */
   EstadoPedido _mapEstado(String? estado) {
     switch (estado?.toLowerCase()) {
       case 'pendiente':
@@ -383,6 +467,12 @@ class PedidoDataSource {
     }
   }
 
+  /**
+   * @description Parsea la respuesta de pedidos a una lista plana.
+   * @param {String} body - Cuerpo de la respuesta HTTP.
+   * @returns {List<PedidoModel>} Lista de pedidos.
+   * @throws {Error} No lanza errores por diseno.
+   */
   List<PedidoModel> _parsePedidosFromResponseBody(String body) {
     final decoded = jsonDecode(body);
     final List<dynamic> jsonList = decoded is Map<String, dynamic>

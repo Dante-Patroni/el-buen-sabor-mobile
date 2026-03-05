@@ -90,9 +90,8 @@ Future<void> _refrescarDatosMesa() async {
 abstract class MesaRepository {
   // ... métodos existentes ...
   
-  /// Cierra una mesa y procesa la facturación.
-  /// Retorna el total cobrado si tiene éxito.
-  Future<double> cerrarMesaYFacturar(int idMesa);
+  /// Cierra una mesa y retorna el total cobrado.
+  Future<double> cerrarMesa(int idMesa);
 }
 ```
 
@@ -108,13 +107,12 @@ abstract class MesaRepository {
 **Archivo:** `lib/features/mesas/data/datasources/mesa_datasource.dart`
 
 ```dart
-Future<double> cerrarMesaYFacturar(int idMesa) async {
-  final url = Uri.parse('${AppConfig.apiBaseUrl}/pedidos/cerrar-mesa');
+Future<double> cerrarMesa(int idMesa) async {
+  final url = Uri.parse('${AppConfig.apiBaseUrl}/mesas/$idMesa/cerrar');
   
   final response = await http.post(
     url,
     headers: await _getAuthHeaders(),
-    body: jsonEncode({"mesaId": idMesa}),
   );
   
   if (response.statusCode == 200) {
@@ -139,8 +137,8 @@ Future<double> cerrarMesaYFacturar(int idMesa) async {
 
 ```dart
 @override
-Future<double> cerrarMesaYFacturar(int idMesa) async {
-  return await dataSource.cerrarMesaYFacturar(idMesa);
+Future<double> cerrarMesa(int idMesa) async {
+  return await dataSource.cerrarMesa(idMesa);
 }
 ```
 
@@ -156,9 +154,9 @@ Future<double> cerrarMesaYFacturar(int idMesa) async {
 **Archivo:** `lib/features/mesas/presentation/providers/mesa_provider.dart`
 
 ```dart
-Future<double?> cerrarMesaYFacturar(int idMesa) async {
+Future<double?> cerrarMesa(int idMesa) async {
   try {
-    final totalCobrado = await _repository.cerrarMesaYFacturar(idMesa);
+    final totalCobrado = await _repository.cerrarMesa(idMesa);
     await cargarMesas(); // Refrescar estado
     return totalCobrado;
   } catch (e) {
@@ -226,7 +224,7 @@ Future<void> _cerrarMesaBackend(BuildContext context) async {
 ```dart
 Future<void> _cerrarMesaBackend(BuildContext context) async {
   final mesaProvider = Provider.of<MesaProvider>(context, listen: false);
-  final totalCobrado = await mesaProvider.cerrarMesaYFacturar(_mesaActual.id);
+  final totalCobrado = await mesaProvider.cerrarMesa(_mesaActual.id);
   
   if (totalCobrado == null) {
     _mostrarError(context, "Error al cerrar la mesa.");

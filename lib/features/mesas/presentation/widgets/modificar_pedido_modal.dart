@@ -42,6 +42,14 @@ class ModificarPedidoModal extends StatefulWidget {
   /// Lista de items (platos) que componen el pedido
   final List<Pedido> itemsPedido;
 
+  /**
+   * @description Crea el modal para modificar un pedido existente.
+   * @param {int} pedidoId - ID del pedido padre.
+   * @param {String} mesaNumero - Numero de mesa.
+   * @param {List<Pedido>} itemsPedido - Items del pedido.
+   * @returns {ModificarPedidoModal} Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const ModificarPedidoModal({
     super.key,
     required this.pedidoId,
@@ -50,6 +58,11 @@ class ModificarPedidoModal extends StatefulWidget {
   });
 
   @override
+  /**
+   * @description Crea el estado asociado al modal de modificacion.
+   * @returns {State<ModificarPedidoModal>} Estado del modal.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<ModificarPedidoModal> createState() => _ModificarPedidoModalState();
 }
 
@@ -60,6 +73,11 @@ class _ModificarPedidoModalState extends State<ModificarPedidoModal> {
   late List<Pedido> itemsModificados;
 
   @override
+  /**
+   * @description Inicializa la copia local de items modificables.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void initState() {
     super.initState();
 
@@ -71,6 +89,12 @@ class _ModificarPedidoModalState extends State<ModificarPedidoModal> {
   }
 
   @override
+  /**
+   * @description Construye la UI del modal de modificacion de pedido.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
@@ -337,6 +361,13 @@ class _ModificarPedidoModalState extends State<ModificarPedidoModal> {
 
   /// Dialog para editar cantidad y aclaración
   /// Sigue el mismo patrón que DetallePlatoModal para asegurar persistencia
+  /**
+   * @description Muestra el dialogo para editar un item del pedido.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @param {int} index - Indice del item a editar.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error al abrir el modal o actualizar item.
+   */
   Future<void> _mostrarDialogoEditar(BuildContext context, int index) async {
     final item = itemsModificados[index];
     final provider = context.read<PedidoProvider>();

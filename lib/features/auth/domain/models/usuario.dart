@@ -51,22 +51,16 @@ class Usuario {
   /// Se usa como identificador para el login
   final String legajo;
 
-  /// Constructor con parámetros nombrados requeridos
-  ///
-  /// SINTAXIS DART:
-  /// - `required`: Obliga a pasar el parámetro (no puede ser null)
-  /// - `this.propiedad`: Sintaxis corta para asignar al campo de la clase
-  ///
-  /// EJEMPLO DE USO:
-  /// ```dart
-  /// final usuario = Usuario(
-  ///   id: 1,
-  ///   nombre: 'Dante',
-  ///   apellido: 'Patroni',
-  ///   rol: 'mozo',
-  ///   legajo: '12345',
-  /// );
-  /// ```
+  /**
+   * @description Crea una instancia inmutable de Usuario.
+   * @param {int} id - Identificador unico del usuario.
+   * @param {String} nombre - Nombre del empleado.
+   * @param {String} apellido - Apellido del empleado.
+   * @param {String} rol - Rol del usuario (mozo, cocinero, admin).
+   * @param {String} legajo - Legajo o numero de empleado.
+   * @returns {Usuario} Instancia creada.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Usuario({
     required this.id,
     required this.nombre,
@@ -79,36 +73,12 @@ class Usuario {
   // 🔄 SERIALIZACIÓN - Conversión JSON ↔ Objeto Dart
   // ============================================================================
 
-  /// Factory constructor para crear un Usuario desde JSON
-  ///
-  /// PATRÓN: Factory Constructor
-  /// Un factory constructor puede retornar una instancia existente o crear una nueva.
-  /// Se usa comúnmente para deserialización (JSON → Objeto).
-  ///
-  /// FLUJO DE DESERIALIZACIÓN:
-  /// 1. Backend envía JSON: {"id": 1, "nombre": "Dante", ...}
-  /// 2. http package lo convierte a `Map<String, dynamic>`
-  /// 3. Este método convierte el Map a un objeto Usuario
-  ///
-  /// OPERADOR ??:
-  /// Proporciona un valor por defecto si el campo es null.
-  /// Ejemplo: json['id'] ?? 0 → Si 'id' es null, usa 0
-  ///
-  /// PARÁMETROS:
-  /// - json: Mapa con los datos del usuario recibidos del backend
-  ///
-  /// RETORNA: Nueva instancia de Usuario
-  ///
-  /// EJEMPLO DE JSON ESPERADO:
-  /// ```json
-  /// {
-  ///   "id": 1,
-  ///   "nombre": "Dante",
-  ///   "apellido": "Patroni",
-  ///   "rol": "mozo",
-  ///   "legajo": "12345"
-  /// }
-  /// ```
+  /**
+   * @description Crea un Usuario a partir de un mapa JSON.
+   * @param {Map<String, dynamic>} json - Datos del usuario desde backend.
+   * @returns {Usuario} Instancia construida.
+   * @throws {Error} No lanza errores por diseno; usa defaults.
+   */
   factory Usuario.fromJson(Map<String, dynamic> json) {
     return Usuario(
       id: json['id'] ?? 0, // ID del usuario (default: 0)

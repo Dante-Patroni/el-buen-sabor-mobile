@@ -18,11 +18,21 @@ class VerPedidoMesaScreen extends StatefulWidget {
   });
 
   @override
+  /**
+   * @description Crea el estado de la pantalla de pedidos de mesa.
+   * @returns {State<VerPedidoMesaScreen>} Estado de la pantalla.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<VerPedidoMesaScreen> createState() => _VerPedidoMesaScreenState();
 }
 
 class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
   @override
+  /**
+   * @description Inicializa la carga de pedidos de la mesa.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -32,6 +42,12 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
   }
 
   @override
+  /**
+   * @description Construye la UI de pedidos de la mesa.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -302,6 +318,12 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
     );
   }
 
+  /**
+   * @description Retorna un color segun el estado del pedido.
+   * @param {EstadoPedido} estado - Estado del pedido.
+   * @returns {Color} Color asociado al estado.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Color _getColorEstado(EstadoPedido estado) {
     switch (estado) {
       case EstadoPedido.pendiente:

@@ -33,17 +33,11 @@ import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/mesas/data/datasources/mesa_datasource.dart';
 import 'features/mesas/data/repositories/mesa_repository_impl.dart';
 
-/// 🚀 FUNCIÓN MAIN - Punto de entrada de la aplicación
-///
-/// Esta función se ejecuta primero cuando la app inicia.
-///
-/// CONCEPTOS CLAVE:
-/// - `WidgetsFlutterBinding.ensureInitialized()`: Asegura que el framework
-///   de Flutter esté completamente inicializado antes de ejecutar código nativo.
-///   Es necesario cuando usamos plugins o código asíncrono antes de runApp().
-///
-/// - `runApp()`: Infla el widget raíz y lo adjunta a la pantalla.
-///   Todo lo que esté dentro de este widget será parte de la aplicación.
+/**
+ * @description Punto de entrada de la aplicacion Flutter.
+ * @returns {void} No retorna valor.
+ * @throws {Error} No lanza errores por diseno.
+ */
 void main() {
   // Inicializa el binding de Flutter (necesario para plugins y código async)
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +74,14 @@ class ElBuenSaborApp extends StatelessWidget {
   final PedidoRepository pedidoRepository;
   final MesaRepository mesaRepository;
 
+  /**
+   * @description Crea el widget raiz con dependencias inyectadas.
+   * @param {AuthRepository} authRepository - Repositorio de auth.
+   * @param {PedidoRepository} pedidoRepository - Repositorio de pedidos.
+   * @param {MesaRepository} mesaRepository - Repositorio de mesas.
+   * @returns {ElBuenSaborApp} Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const ElBuenSaborApp({
     super.key,
     required this.authRepository,
@@ -88,6 +90,12 @@ class ElBuenSaborApp extends StatelessWidget {
   });
 
   @override
+  /**
+   * @description Construye el arbol principal de la aplicacion.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     // 🔄 MULTIPROVIDER - Gestión de Estado Global
     //
@@ -149,9 +157,19 @@ class ElBuenSaborApp extends StatelessWidget {
 }
 
 class SessionGate extends StatefulWidget {
+  /**
+   * @description Crea el gate de sesion.
+   * @returns {SessionGate} Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const SessionGate({super.key});
 
   @override
+  /**
+   * @description Crea el estado del gate de sesion.
+   * @returns {State<SessionGate>} Estado del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<SessionGate> createState() => _SessionGateState();
 }
 
@@ -159,6 +177,11 @@ class _SessionGateState extends State<SessionGate> {
   bool _restored = false;
 
   @override
+  /**
+   * @description Restaura sesion una sola vez al montar dependencias.
+   * @returns {void} No retorna valor.
+   * @throws {Exception} Error al restaurar sesion.
+   */
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_restored) return;
@@ -169,6 +192,12 @@ class _SessionGateState extends State<SessionGate> {
   }
 
   @override
+  /**
+   * @description Construye la UI de gating segun estado de sesion.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (_, authProvider, __) {

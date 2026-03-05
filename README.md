@@ -134,7 +134,7 @@ UI  →  Provider  →  Repository (abstracto)
 
 ## 🧪 Testing
 
-El proyecto cuenta con **38 tests unitarios** cubriendo todas las capas.
+El proyecto incluye tests unitarios y un widget test base.
 
 ```bash
 # Ejecutar todos los tests
@@ -147,16 +147,16 @@ flutter analyze
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-### Cobertura de Tests
+### Cobertura de Tests (archivos existentes)
 
-| Módulo | Archivo | Tests |
-|---|---|---|
-| Auth - DataSource | `auth_repository_test.dart` | HTTP: 200, 401, 404, timeout, SocketException, headers |
-| Auth - Provider | `auth_provider_test.dart` | Estado inicial, login exitoso/fallido, logout, notifyListeners |
-| Mesas - Repository | `mesa_repository_test.dart` | CRUD completo, errores de red |
-| Pedidos - Provider | `pedido_provider_test.dart` | Carrito, confirmar, borrar histórico, modificar, inicializar datos |
-| Pedidos - Models | `pedido_model_test.dart` | Serialización JSON, mapeo de estados |
-| Usuario - Model | `usuario_test.dart` | Deserialización, valores default |
+| Módulo | Archivo |
+|---|---|
+| Auth - Repository | `test/unit/repositories/auth_repository_test.dart` |
+| Auth - Provider | `test/unit/providers/auth_provider_test.dart` |
+| Mesas - Provider | `test/unit/providers/mesa_provider_test.dart` |
+| Pedidos - Provider | `test/unit/providers/pedido_provider_test.dart` |
+| Usuario - Model | `test/unit/models/usuario_test.dart` |
+| Widget (smoke) | `test/widget_test.dart` |
 
 ---
 

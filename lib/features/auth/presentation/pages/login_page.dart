@@ -8,6 +8,11 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
+  /**
+   * @description Crea el estado asociado al LoginPage.
+   * @returns {State<LoginPage>} Estado de la pagina de login.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<LoginPage> createState() => _LoginPageState();
 }
 
@@ -17,6 +22,11 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
   @override
+  /**
+   * @description Libera los controladores de texto del formulario.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void dispose() {
     _legajoController.dispose();
     _passController.dispose();
@@ -24,6 +34,12 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
+  /**
+   * @description Construye la UI del formulario de login.
+   * @param {BuildContext} context - Contexto de widgets de Flutter.
+   * @returns {Widget} Arbol de widgets del login.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);//|Obtengo una referencia al AuthProvider 
 

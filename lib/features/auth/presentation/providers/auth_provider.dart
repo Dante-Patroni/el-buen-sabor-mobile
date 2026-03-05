@@ -68,26 +68,13 @@ class AuthProvider extends ChangeNotifier {
   /// En producción usa la instancia real, en tests usa un mock
   final StorageService _storage;
 
-  /// Constructor con inyección de dependencias opcional
-  ///
-  /// PARÁMETROS OPCIONALES:
-  /// - repository: Repositorio de autenticación (default: AuthRepository())
-  /// - storage: Servicio de almacenamiento (default: StorageService())
-  ///
-  /// USO EN PRODUCCIÓN:
-  /// ```dart
-  /// final provider = AuthProvider();  // Usa instancias reales
-  /// ```
-  ///
-  /// USO EN TESTS:
-  /// ```dart
-  /// final mockRepo = MockAuthRepository();
-  /// final mockStorage = MockStorageService();
-  /// final provider = AuthProvider(
-  ///   repository: mockRepo,
-  ///   storage: mockStorage,
-  /// );
-  /// ```
+  /**
+   * @description Crea el provider con dependencias opcionales para testing.
+   * @param {AuthRepository?} repository - Repositorio de autenticacion.
+   * @param {StorageService?} storage - Servicio de almacenamiento seguro.
+   * @returns {AuthProvider} Instancia del provider.
+   * @throws {Error} No lanza errores por diseno.
+   */
   AuthProvider({
     AuthRepository? repository,
     StorageService? storage,
@@ -114,40 +101,51 @@ class AuthProvider extends ChangeNotifier {
   // 📤 GETTERS PÚBLICOS - Acceso al Estado desde la UI
   // ============================================================================
 
-  /// Indica si hay una operación en progreso
-  ///
-  /// USO EN UI:
-  /// ```dart
-  /// if (authProvider.isLoading) {
-  ///   return CircularProgressIndicator();
-  /// }
-  /// ```
+  /**
+   * @description Indica si hay una operacion de autenticacion en progreso.
+   * @returns {bool} True si esta cargando; false si no.
+   * @throws {Error} No lanza errores.
+   */
   bool get isLoading => _isLoading;
 
-  /// Mensaje de error actual (si existe)
-  ///
-  /// USO EN UI:
-  /// ```dart
-  /// if (authProvider.errorMessage != null) {
-  ///   Text(authProvider.errorMessage!, style: TextStyle(color: Colors.red));
-  /// }
-  /// ```
+  /**
+   * @description Mensaje de error actual del flujo de autenticacion.
+   * @returns {String?} Mensaje o null si no hay error.
+   * @throws {Error} No lanza errores.
+   */
   String? get errorMessage => _errorMessage;
 
-  /// Usuario autenticado (si existe)
-  ///
-  /// USO EN UI:
-  /// ```dart
-  /// Text('Hola ${authProvider.usuario?.nombre}');
-  /// ```
+  /**
+   * @description Usuario autenticado actual (si existe).
+   * @returns {Usuario?} Usuario o null si no hay sesion.
+   * @throws {Error} No lanza errores.
+   */
   Usuario? get usuario => _usuario;
+  /**
+   * @description Indica si existe un usuario autenticado.
+   * @returns {bool} True si hay sesion; false si no.
+   * @throws {Error} No lanza errores.
+   */
   bool get isAuthenticated => _usuario != null;
 
+  /**
+   * @description Normaliza mensajes de error para mostrarlos en UI.
+   * @param {Object} e - Error capturado.
+   * @param {String} fallback - Mensaje por defecto si no hay detalle.
+   * @returns {String} Mensaje normalizado.
+   * @throws {Error} No lanza errores.
+   */
   String _normalizarError(Object e, {String fallback = 'Error inesperado'}) {
     final msg = e.toString().replaceAll('Exception: ', '').trim();
     return msg.isEmpty ? fallback : msg;
   }
 
+  /**
+   * @description Reconstruye un Usuario a partir de un JWT.
+   * @param {String} token - Token JWT.
+   * @returns {Usuario?} Usuario si el token es valido; null si no.
+   * @throws {Error} No lanza errores; retorna null si falla el parseo.
+   */
   Usuario? _usuarioDesdeToken(String token) {
     final parts = token.split('.');
     if (parts.length < 2) return null;
@@ -173,6 +171,11 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /**
+   * @description Restaura la sesion leyendo el token almacenado.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error al leer token o validar sesion.
+   */
   Future<void> restoreSessionFromToken() async {
     _isLoading = true;
     _errorMessage = null;
@@ -210,37 +213,13 @@ class AuthProvider extends ChangeNotifier {
   // 🔑 LOGIN - Autenticación de Usuario
   // ============================================================================
 
-  /// Autentica un usuario con legajo y contraseña
-  ///
-  /// FLUJO COMPLETO:
-  /// 1. Actualiza estado a "cargando" y limpia errores previos
-  /// 2. Notifica a la UI (muestra loading)
-  /// 3. Llama al repositorio para autenticar
-  /// 4. Si es exitoso:
-  ///    - Guarda el token en almacenamiento seguro
-  ///    - Guarda el usuario en memoria
-  ///    - Actualiza estado a "no cargando"
-  ///    - Notifica a la UI (oculta loading, navega a home)
-  /// 5. Si falla:
-  ///    - Guarda el mensaje de error
-  ///    - Actualiza estado a "no cargando"
-  ///    - Notifica a la UI (muestra error)
-  ///
-  /// PARÁMETROS:
-  /// - legajo: Número de empleado
-  /// - password: Contraseña del usuario
-  ///
-  /// RETORNA: `Future<bool>`
-  /// - true si el login fue exitoso
-  /// - false si falló (credenciales incorrectas, error de red, etc.)
-  ///
-  /// EJEMPLO DE USO:
-  /// ```dart
-  /// final exito = await authProvider.login('12345', 'password123');
-  /// if (exito) {
-  ///   Navigator.pushReplacement(context, MaterialPageRoute(...));
-  /// }
-  /// ```
+  /**
+   * @description Autentica un usuario con legajo y contrasena.
+   * @param {String} legajo - Legajo del empleado.
+   * @param {String} password - Contrasena del usuario.
+   * @returns {Future<bool>} True si autentica; false si falla.
+   * @throws {Exception} Error de red, credenciales o almacenamiento.
+   */
   Future<bool> login(String legajo, String password) async {
     // -------------------------------------------------------------------------
     // 📍 PASO 1: Preparar el estado para la operación
@@ -309,20 +288,11 @@ class AuthProvider extends ChangeNotifier {
   // 🚪 LOGOUT - Cerrar Sesión
   // ============================================================================
 
-  /// Cierra la sesión del usuario actual
-  ///
-  /// FLUJO:
-  /// 1. Elimina el token del almacenamiento seguro
-  /// 2. Limpia el usuario de la memoria
-  /// 3. Notifica a la UI (redirige a login)
-  ///
-  /// EJEMPLO DE USO:
-  /// ```dart
-  /// await authProvider.logout();
-  /// Navigator.pushReplacement(context, MaterialPageRoute(
-  ///   builder: (_) => LoginPage(),
-  /// ));
-  /// ```
+  /**
+   * @description Cierra la sesion del usuario y limpia estado local.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error al eliminar el token.
+   */
   Future<void> logout() async {
     try {
       await _storage.deleteToken();

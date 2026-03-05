@@ -19,8 +19,21 @@ class AuthDataSource {
   final http.Client _client;
   final String _baseUrl = '${AppConfig.apiBaseUrl}/usuarios';
 
+  /**
+   * @description Crea un data source de autenticacion con cliente HTTP opcional.
+   * @param {http.Client?} client - Cliente HTTP inyectado para tests.
+   * @returns {AuthDataSource} Instancia del data source.
+   * @throws {Error} No lanza errores por diseno.
+   */
   AuthDataSource({http.Client? client}) : _client = client ?? http.Client();
 
+  /**
+   * @description Extrae un mensaje de error legible desde el body del backend.
+   * @param {String} body - Cuerpo de la respuesta HTTP.
+   * @param {String} fallback - Mensaje por defecto si no hay mensaje.
+   * @returns {String} Mensaje de error.
+   * @throws {Error} No lanza errores; devuelve fallback si falla el parseo.
+   */
   String _extractBackendMessage(String body,
       {String fallback = 'Error de autenticación'}) {
     try {
@@ -41,8 +54,13 @@ class AuthDataSource {
   // 🔑 LOGIN (POST /usuarios/login)
   // ===========================================================================
 
-  /// Envía las credenciales al backend y retorna el token + datos del usuario.
-  /// Lanza Exception si las credenciales son inválidas o hay error de red.
+  /**
+   * @description Envia credenciales y retorna token y datos del usuario.
+   * @param {String} legajo - Legajo del empleado.
+   * @param {String} password - Contrasena del usuario.
+   * @returns {Future<Map<String, dynamic>>} Token y usuario autenticado.
+   * @throws {Exception} Credenciales invalidas, error de red o timeout.
+   */
   Future<Map<String, dynamic>> login(String legajo, String password) async {
     try {
       final response = await _client.post(

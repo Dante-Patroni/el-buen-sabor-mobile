@@ -253,13 +253,13 @@ sequenceDiagram
     MM ->> MM: Mostrar loading (CircularProgress)
 
     Note over MM,MP: ✅ CORRECTO: Usa Provider en lugar de HTTP directo
-    MM ->> MP: cerrarMesaYFacturar(mesaId)
+    MM ->> MP: cerrarMesa(mesaId)
     activate MP
-    MP ->> MR: cerrarMesaYFacturar(mesaId)
+    MP ->> MR: cerrarMesa(mesaId)
     activate MR
-    MR ->> MD: cerrarMesaYFacturar(mesaId)
+    MR ->> MD: cerrarMesa(mesaId)
     activate MD
-    MD ->> API: POST /pedidos/cerrar-mesa\n{ mesaId, Authorization: Bearer token }
+    MD ->> API: POST /mesas/:id/cerrar\nAuthorization: Bearer token
     API -->> MD: 200 OK { totalCobrado }
     deactivate MD
     MR -->> MP: éxito + totalCobrado
@@ -305,21 +305,18 @@ sequenceDiagram
 abstract class MesaRepository {
   Future<List<Mesa>> getMesas();
   Future<void> abrirMesa(int idMesa, int idMozo);
-  Future<void> cerrarMesa(int idMesa);
-  // ✅ NUEVO: Para cerrar mesa y facturar
-  Future<double> cerrarMesaYFacturar(int idMesa);
+  Future<double> cerrarMesa(int idMesa);
 }
 ```
 
 ### 2. Implementar en `MesaDataSource`
 
 ```dart
-Future<double> cerrarMesaYFacturar(int idMesa) async {
-  final url = Uri.parse('$baseUrl/pedidos/cerrar-mesa');
+Future<double> cerrarMesa(int idMesa) async {
+  final url = Uri.parse('$baseUrl/mesas/$idMesa/cerrar');
   final response = await http.post(
     url,
     headers: await _getAuthHeaders(),
-    body: jsonEncode({"mesaId": idMesa}),
   );
   
   if (response.statusCode == 200) {
@@ -334,9 +331,9 @@ Future<double> cerrarMesaYFacturar(int idMesa) async {
 ### 3. Agregar método en `MesaProvider`
 
 ```dart
-Future<double?> cerrarMesaYFacturar(int idMesa) async {
+Future<double?> cerrarMesa(int idMesa) async {
   try {
-    final totalCobrado = await _repository.cerrarMesaYFacturar(idMesa);
+    final totalCobrado = await _repository.cerrarMesa(idMesa);
     await cargarMesas(); // Refrescar estado de mesas
     return totalCobrado;
   } catch (_) {

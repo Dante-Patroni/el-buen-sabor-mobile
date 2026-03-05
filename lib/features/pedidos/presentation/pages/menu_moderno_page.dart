@@ -14,10 +14,22 @@ class MenuModernoPage extends StatefulWidget {
   final int idMesa;
   final String numeroMesa;
 
+  /**
+   * @description Crea la pantalla de menu para una mesa.
+   * @param {int} idMesa - Id de la mesa.
+   * @param {String} numeroMesa - Numero visible de la mesa.
+   * @returns {MenuModernoPage} Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const MenuModernoPage(
       {super.key, required this.idMesa, required this.numeroMesa});
 
   @override
+  /**
+   * @description Crea el estado de la pantalla de menu.
+   * @returns {State<MenuModernoPage>} Estado del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   State<MenuModernoPage> createState() => _MenuModernoPageState();
 }
 
@@ -27,21 +39,89 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
   Rubro? _subRubroSeleccionado;
 
   bool _mostrandoMenuDelDia = false;
+  bool _seleccionInicialAplicada = false;
 
   @override
+  /**
+   * @description Inicializa y refresca datos al abrir la pantalla.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<PedidoProvider>(context, listen: false);
-      if (provider.menuPlatos.isEmpty || provider.listaRubros.isEmpty) {
-        provider.inicializarDatos();
-      }
+      provider.inicializarDatos(forceMenuOnline: true);
     });
+  }
+
+  @override
+  /**
+   * @description Aplica seleccion inicial cuando cambian dependencias.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores por diseno.
+   */
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _aplicarSeleccionInicial();
+  }
+
+  /**
+   * @description Selecciona rubro y subrubro por defecto una sola vez.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores.
+   */
+  void _aplicarSeleccionInicial() {
+    if (_seleccionInicialAplicada || _mostrandoMenuDelDia) {
+      return;
+    }
+
+    final provider = Provider.of<PedidoProvider>(context, listen: false);
+    if (provider.listaRubros.isNotEmpty && _rubroPadreSeleccionado == null) {
+      _rubroPadreSeleccionado = provider.listaRubros.first;
+      if (_rubroPadreSeleccionado!.subrubros.isNotEmpty) {
+        _subRubroSeleccionado = _rubroPadreSeleccionado!.subrubros.first;
+      }
+      _seleccionInicialAplicada = true;
+    }
+  }
+
+  /**
+   * @description Fuerza la recarga del menu desde el backend.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red o backend.
+   */
+  Future<void> _refrescarMenu() async {
+    final provider = Provider.of<PedidoProvider>(context, listen: false);
+    await provider.inicializarDatos(forceMenuOnline: true);
+
+    if (!mounted) return;
+
+    if (provider.errorMessage.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(provider.errorMessage),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 2),
+      ));
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text("Menu actualizado"),
+      backgroundColor: Colors.green,
+      duration: Duration(seconds: 1),
+    ));
   }
 
   // --- LÓGICA DE FILTRADO ---
 
   /// Filtramos los platos según lo seleccionado
+  /**
+   * @description Filtra platos segun rubro, subrubro o menu del dia.
+   * @param {PedidoProvider} provider - Provider de pedidos.
+   * @returns {List<Plato>} Platos visibles.
+   * @throws {Error} No lanza errores.
+   */
   List<Plato> _getPlatosFiltrados(PedidoProvider provider) {
     // 1. Menú del día (Prioridad)
     if (_mostrandoMenuDelDia) {
@@ -62,6 +142,14 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
   }
 
   /// Lógica para abrir el modal (igual que antes)
+  /**
+   * @description Abre el modal de detalle de plato y agrega al carrito.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @param {Plato} plato - Plato seleccionado.
+   * @param {int} stockDisponible - Stock disponible.
+   * @returns {void} No retorna valor.
+   * @throws {Exception} Error al abrir modal o agregar.
+   */
   void _abrirDetallePlato(
       BuildContext context, Plato plato, int stockDisponible) async {
 
@@ -97,20 +185,14 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
   }
 
   @override
+  /**
+   * @description Construye la UI del menu de platos.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     final provider = Provider.of<PedidoProvider>(context);
-
-    // Inicialización automática de selección (Si ya cargó datps pero no seleccionamos nada)
-    if (provider.listaRubros.isNotEmpty &&
-        _rubroPadreSeleccionado == null &&
-        !_mostrandoMenuDelDia) {
-      // Por defecto seleccionamos el primero (Generalmente "Cocina")
-      _rubroPadreSeleccionado = provider.listaRubros.first;
-      // Y seleccionamos su primer hijo (ej: "Hamburguesas")
-      if (_rubroPadreSeleccionado!.subrubros.isNotEmpty) {
-        _subRubroSeleccionado = _rubroPadreSeleccionado!.subrubros.first;
-      }
-    }
 
     // Platos a mostrar
     final platosVisibles = _getPlatosFiltrados(provider);
@@ -122,6 +204,11 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
           foregroundColor: Colors.black,
           elevation: 0,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.black),
+              tooltip: "Actualizar menu",
+              onPressed: _refrescarMenu,
+            ),
             // Botón Menú del Día (Toggle)
             TextButton.icon(
               icon: const Icon(Icons.star, color: Colors.orange),
@@ -136,6 +223,8 @@ class _MenuModernoPageState extends State<MenuModernoPage> {
                   if (_mostrandoMenuDelDia) {
                     _rubroPadreSeleccionado = null;
                     _subRubroSeleccionado = null;
+                  } else {
+                    _aplicarSeleccionInicial();
                   }
                 });
               },
@@ -338,6 +427,14 @@ class PlatoCard extends StatelessWidget {
   final int stockDisplay;
   final VoidCallback onTap;
 
+  /**
+   * @description Crea una tarjeta de plato para la grilla.
+   * @param {Plato} plato - Plato a renderizar.
+   * @param {int} stockDisplay - Stock visible.
+   * @param {VoidCallback} onTap - Callback al tocar.
+   * @returns {PlatoCard} Instancia del widget.
+   * @throws {Error} No lanza errores por diseno.
+   */
   const PlatoCard({
     super.key,
     required this.plato,
@@ -345,6 +442,12 @@ class PlatoCard extends StatelessWidget {
     required this.onTap,
   });
 
+  /**
+   * @description Construye la URL final de la imagen del plato.
+   * @param {String} path - Ruta o URL original.
+   * @returns {String} URL lista para Image.network.
+   * @throws {Error} No lanza errores por diseno.
+   */
   String _construirUrlImagen(String path) {
     if (path.isEmpty) return "";
     if (path.startsWith("http")) return path;
@@ -354,6 +457,12 @@ class PlatoCard extends StatelessWidget {
   }
 
   @override
+  /**
+   * @description Construye la UI de la tarjeta de plato.
+   * @param {BuildContext} context - Contexto de widgets.
+   * @returns {Widget} Arbol de widgets.
+   * @throws {Error} No lanza errores por diseno.
+   */
   Widget build(BuildContext context) {
     final agotado = (!plato.stock.esIlimitado && stockDisplay <= 0);
     final urlFinal = _construirUrlImagen(plato.imagenPath);

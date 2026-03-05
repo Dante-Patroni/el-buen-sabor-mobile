@@ -35,6 +35,11 @@ class PedidoProvider extends ChangeNotifier {
 
   // ✅ Nueva Lista de Rubros (Jerarquía)
   List<Rubro> _listaRubros = [];
+  /**
+   * @description Lista de rubros disponibles para la UI.
+   * @returns {List<Rubro>} Rubros cargados.
+   * @throws {Error} No lanza errores.
+   */
   List<Rubro> get listaRubros => _listaRubros;
 
   // ⚙️ Configuración del Contexto Actual
@@ -49,25 +54,45 @@ class PedidoProvider extends ChangeNotifier {
   // 2️⃣ CONSTRUCTOR Y GETTERS
   // ---------------------------------------------------------------------------
 
-  /// Constructor que exige un repositorio. Esto facilita las pruebas (testing) ya que
-  /// podemos pasar un "Repositorio Falso" (Mock) si quisiéramos probar sin internet.
+  /**
+   * @description Crea el provider de pedidos con repositorio inyectado.
+   * @param {PedidoRepository} pedidoRepository - Repositorio de pedidos.
+   * @returns {PedidoProvider} Instancia del provider.
+   * @throws {Error} No lanza errores por diseno.
+   */
   PedidoProvider({required this.pedidoRepository});
 
-  /// Getter para saber si la app está "pensando" (cargando datos).
-  /// La UI usa esto para mostrar el `CircularProgressIndicator`.
+  /**
+   * @description Indica si hay una operacion de carga en progreso.
+   * @returns {bool} True si esta cargando; false si no.
+   * @throws {Error} No lanza errores.
+   */
   bool get isLoading => _isLoading;
 
-  /// Getter para obtener mensajes de error si algo falla.
+  /**
+   * @description Mensaje de error actual.
+   * @returns {String} Mensaje de error o vacio.
+   * @throws {Error} No lanza errores.
+   */
   String get errorMessage => _errorMessage;
 
+  /**
+   * @description Normaliza un error a un mensaje legible.
+   * @param {Object} e - Error capturado.
+   * @param {String} fallback - Mensaje por defecto.
+   * @returns {String} Mensaje normalizado.
+   * @throws {Error} No lanza errores.
+   */
   String _normalizarError(Object e, {String fallback = 'Error inesperado'}) {
     final msg = e.toString().replaceAll('Exception: ', '').trim();
     return msg.isEmpty ? fallback : msg;
   }
 
-  /// **Propiedad Computada (Computed Property)**
-  /// Calcula el total monetario del carrito en tiempo real.
-  /// Se usa `.fold` que es como un bucle `for` pero funcional y más elegante.
+  /**
+   * @description Calcula el total monetario del carrito.
+   * @returns {double} Total del carrito.
+   * @throws {Error} No lanza errores.
+   */
   double get totalCarrito {
     return carrito.fold(0.0, (suma, pedido) {
       return suma + (pedido.total * pedido.cantidad);
@@ -78,23 +103,21 @@ class PedidoProvider extends ChangeNotifier {
   // 3️⃣ MÉTODOS DE LÓGICA DE NEGOCIO (BUSINESS LOGIC)
   // ===========================================================================
 
-  /// **inicializarDatos**
-  ///
-  /// Método asíncrono (`async`) encargado de preparar todo al abrir la pantalla.
-  ///
-  /// **Flujo:**
-  /// 1. Activa el estado de carga (`_isLoading = true`).
-  /// 2. Pide al repositorio el menú y el historial de pedidos en paralelo (o secuencial).
-  /// 3. Guarda los datos en las variables locales.
-  /// 4. Desactiva la carga y avisa a la UI (`notifyListeners`) para que muestre los datos.
-  Future<void> inicializarDatos() async {
+  /**
+   * @description Inicializa menu, rubros y pedidos en memoria.
+   * @param {bool} forceMenuOnline - Si es true, fuerza menu desde backend sin fallback offline.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red o backend.
+   */
+  Future<void> inicializarDatos({bool forceMenuOnline = false}) async {
+    _errorMessage = '';
     _isLoading = true;
     notifyListeners(); // 📢 Avisamos a la UI: "Hey, estoy cargando, muestra el spinner".
 
     try {
       // A. Cargar el Menú (Platos)
       // `await` significa: "Espera aquí hasta que el servidor responda antes de seguir".
-      final menu = await pedidoRepository.getMenu();
+      final menu = await pedidoRepository.getMenu(forceOnline: forceMenuOnline);
       menuPlatos = menu;
 
       // B. Cargar Rubros (Nuevo)
@@ -111,6 +134,10 @@ class PedidoProvider extends ChangeNotifier {
         e,
         fallback: "No se pudo conectar con el servidor.",
       );
+      if (forceMenuOnline) {
+        menuPlatos = [];
+        _listaRubros = [];
+      }
       debugPrint("Error en inicializarDatos: $e");
     } finally {
       // El bloque `finally` se ejecuta SIEMPRE, haya error o no.
@@ -119,7 +146,12 @@ class PedidoProvider extends ChangeNotifier {
     }
   }
 
-  /// Configura el contexto de la mesa actual para saber a quién asignar los nuevos pedidos.
+  /**
+   * @description Configura la mesa activa para nuevos pedidos.
+   * @param {String} mesaId - Numero o id de mesa.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores.
+   */
   void iniciarPedido(String mesaId) {
     mesaSeleccionada = mesaId;
     carrito
@@ -127,7 +159,12 @@ class PedidoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Establece el nombre del cliente (opcional) para imprimirlo en el ticket luego.
+  /**
+   * @description Configura el nombre del cliente actual.
+   * @param {String} nombre - Nombre del cliente.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores.
+   */
   void setCliente(String nombre) {
     clienteActual = nombre;
     notifyListeners();
@@ -137,15 +174,20 @@ class PedidoProvider extends ChangeNotifier {
   // 4️⃣ GESTIÓN DEL CARRITO (LÓGICA LOCAL)
   // ===========================================================================
 
-  /// Agrega un plato al carrito temporal.
-  ///
-  /// **Lógica:**
-  /// - Busca si el plato ya existe en el carrito.
-  /// - **Si existe**: Solo actualizamos la cantidad (para no tener filas duplicadas).
-  /// - **Si no existe**: Creamos una nueva instancia de `Pedido` y la agregamos a la lista.
+  /**
+   * @description Agrega un plato al carrito, diferenciando por aclaracion.
+   * @param {Plato} plato - Plato a agregar.
+   * @param {int} cantidad - Cantidad a agregar.
+   * @param {String?} aclaracion - Nota opcional del pedido.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores.
+   */
   void agregarAlCarrito(Plato plato, {int cantidad = 1, String? aclaracion}) {
-    // Buscamos si ya está en la lista (devuelve -1 si no está)
-    final index = carrito.indexWhere((p) => p.platoId == plato.id);
+    final nota = (aclaracion ?? '').trim();
+    // Buscamos si ya está en la lista (plato + aclaración)
+    final index = carrito.indexWhere(
+      (p) => p.platoId == plato.id && (p.aclaracion ?? '').trim() == nota,
+    );
 
     if (index != -1) {
       // CASO A: Ya existe -> Modificamos el objeto existente usando `copyWith` (Inmutabilidad parcial)
@@ -161,16 +203,24 @@ class PedidoProvider extends ChangeNotifier {
         total: plato.precio,
         cantidad: cantidad,
         estado: EstadoPedido.pendiente,
-        aclaracion: aclaracion ?? "",
+        aclaracion: nota,
       );
       carrito.add(nuevoPedido);
     }
     notifyListeners(); // 📢 Actualiza el contador del carrito en la UI
   }
 
-  /// Elimina un ítem específico del carrito.
+  /**
+   * @description Elimina un item especifico del carrito.
+   * @param {Pedido} pedido - Item a eliminar.
+   * @returns {void} No retorna valor.
+   * @throws {Error} No lanza errores.
+   */
   void quitarDelCarrito(Pedido pedido) {
-    carrito.removeWhere((p) => p.platoId == pedido.platoId);
+    final nota = (pedido.aclaracion ?? '').trim();
+    carrito.removeWhere(
+      (p) => p.platoId == pedido.platoId && (p.aclaracion ?? '').trim() == nota,
+    );
     notifyListeners();
   }
 
@@ -178,8 +228,11 @@ class PedidoProvider extends ChangeNotifier {
   // 5️⃣ INTERACCIÓN CON EL SERVIDOR (PERSISTENCIA)
   // ===========================================================================
 
-  /// Confirma y envía todos los ítems del CArrito al Backend.
-  /// Retorna `true` si tuvo éxito, `false` si falló.
+  /**
+   * @description Confirma y envia el carrito al backend.
+   * @returns {Future<bool>} True si tuvo exito; false si fallo.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<bool> confirmarPedido() async {
     if (carrito.isEmpty) return false;
 
@@ -212,9 +265,12 @@ class PedidoProvider extends ChangeNotifier {
   // 6️⃣ RECURSOS AUXILIARES (HELPERS)
   // ===========================================================================
 
-  /// Busca la información completa de un plato dado su ID.
-  /// Útil porque el historial de pedidos solo trae el `platoId`, y necesitamos
-  /// buscar el nombre y la imagen en el `menuPlatos` que tenemos en memoria.
+  /**
+   * @description Obtiene un plato por id desde el menu en memoria.
+   * @param {int} id - Id del plato.
+   * @returns {Plato} Plato encontrado o placeholder.
+   * @throws {Error} No lanza errores; retorna placeholder si falla.
+   */
   Plato getPlatoById(int id) {
     try {
       // `cast<Plato>()` asegura que Dart trate la lista como objetos Plato puros.
@@ -250,11 +306,12 @@ class PedidoProvider extends ChangeNotifier {
     }
   }
 
-  /// Eliminación Optimista (Optimistic UI Update):
-  /// 1. Primero borramos el ítem de la lista visual (inmediato).
-  /// 2. Luego llamamos al servidor.
-  /// Si el servidor falla, revertimos el cambio (recargamos).
-  /// Esto hace que la app se sienta instantánea.
+  /**
+   * @description Elimina un pedido historico y actualiza la UI.
+   * @param {int} id - Id del pedido.
+   * @returns {Future<bool>} True si tuvo exito; false si fallo.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<bool> borrarPedidoHistorico(int id) async {
     try {
       // 1. Server API Call (si falla, no tocamos la UI local)
@@ -274,6 +331,12 @@ class PedidoProvider extends ChangeNotifier {
     }
   }
 
+  /**
+   * @description Carga pedidos de una mesa especifica.
+   * @param {String} mesa - Numero o id de mesa.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<void> cargarPedidosDeMesa(String mesa) async {
     _isLoading = true;
     _errorMessage = '';
@@ -295,9 +358,17 @@ class PedidoProvider extends ChangeNotifier {
     }
   }
 
-    /// =========================================================================
+  /// =========================================================================
   /// 🔄 MODIFICAR UN PEDIDO COMPLETO
   /// =========================================================================
+  /**
+   * @description Modifica un pedido completo y recarga datos.
+   * @param {int} pedidoId - Id del pedido.
+   * @param {String} mesa - Numero o id de mesa.
+   * @param {List<Pedido>} pedidoModificado - Items modificados.
+   * @returns {Future<bool>} True si tuvo exito; false si fallo.
+   * @throws {Exception} Error de red o backend.
+   */
   Future<bool> modificarPedido(int pedidoId, String mesa, List<Pedido> pedidoModificado) async {
     _isLoading = true;
     notifyListeners();

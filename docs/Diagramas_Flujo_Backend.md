@@ -455,7 +455,7 @@ sequenceDiagram
 
 ---
 
-### 8. Cerrar Mesa y Facturar (POST /api/pedidos/cerrar-mesa)
+### 8. Modificar Pedido (PUT /api/pedidos/modificar)
 
 ```mermaid
 sequenceDiagram
@@ -464,48 +464,105 @@ sequenceDiagram
     participant AM as authMiddleware
     participant PC as pedidoController.js
     participant PS as pedidoService.js
+    participant DB as MySQL (Pedido + DetallePedido + Mesa)
+    participant PE as pedidoEmitter
+
+    C ->> PR: PUT /api/pedidos/modificar<br/>{id, mesa, productos[]}<br/>Authorization: Bearer token
+    PR ->> AM: Verifica token
+    AM ->> PC: modificar(req, res)
+    activate PC
+
+    PC ->> PS: modificarPedido(datos)
+    activate PS
+
+    PS ->> PS: Valida id, productos y estado
+    PS ->> DB: Pedido.findByPk(id)
+    DB -->> PS: Pedido
+
+    alt Pedido no encontrado
+        PS -->> PC: Error("PEDIDO_NO_ENCONTRADO")
+        PC -->> C: 404 {error}
+        deactivate PS
+        deactivate PC
+    else Pedido no pendiente
+        PS -->> PC: Error("SOLO_SE_PUEDEN_MODIFICAR_PEDIDOS_PENDIENTES")
+        PC -->> C: 400 {error}
+        deactivate PS
+        deactivate PC
+    else Pedido válido
+        PS ->> DB: DetallePedido.findAll({where: {PedidoId}})
+        DB -->> PS: detallesActuales
+        PS ->> PS: _restaurarStock(detallesActuales)
+        PS ->> DB: DetallePedido.destroy({where: {PedidoId}})
+        PS ->> PS: _procesarProductos(productos)
+        PS ->> DB: DetallePedido.bulkCreate([detalles])
+        PS ->> DB: Mesa.update(totalActual += diferencia)
+        PS ->> DB: Pedido.update({total})
+        PS -->> PC: pedidoActualizado
+        deactivate PS
+        PC -->> C: 200 {pedidoActualizado}
+        deactivate PC
+        PS ->> PE: emit("pedido-modificado", {mesa, pedido})
+    end
+```
+
+**Flujo:**
+1. Cliente envía modificación con id, mesa y productos
+2. Service valida existencia y estado del pedido
+3. Restaura stock, elimina detalles, recalcula y crea nuevos detalles
+4. Ajusta total de la mesa por diferencia y actualiza total del pedido
+5. Emite evento "pedido-modificado"
+
+**Notas:**
+- Usa transacción para mantener consistencia
+- Errores esperados: `PEDIDO_ID_INVALIDO`, `PRODUCTOS_INVALIDOS`, `PEDIDO_NO_ENCONTRADO`, `SOLO_SE_PUEDEN_MODIFICAR_PEDIDOS_PENDIENTES`
+
+---
+
+### 9. Cerrar Mesa y Facturar (POST /api/mesas/:id/cerrar)
+
+```mermaid
+sequenceDiagram
+    actor C as Cliente (Frontend)
+    participant MR as mesaRoutes.js
+    participant AM as authMiddleware
+    participant MC as mesaController.js
+    participant MS as mesaService.js
     participant DB as MySQL (Mesa + Pedido)
 
-    C ->> PR: POST /api/pedidos/cerrar-mesa<br/>{mesaId: 4}<br/>Authorization: Bearer token
-    PR ->> AM: Verifica token
-    AM ->> PC: cerrarMesa(req, res)
-    activate PC
+    C ->> MR: POST /api/mesas/4/cerrar<br/>Authorization: Bearer token
+    MR ->> AM: Verifica token
+    AM ->> MC: cerrarMesa(req, res)
+    activate MC
     
-    PC ->> PC: Extrae mesaId del body
-    PC ->> PC: Valida que mesaId exista
+    MC ->> MC: Extrae id de params
+    MC ->> MS: cerrarMesa(id)
+    activate MS
     
-    alt mesaId faltante
-        PC -->> C: 400 {error: "Falta el ID de la mesa"}
-        deactivate PC
-    else mesaId válido
-        PC ->> PS: cerrarMesa(mesaId)
-        activate PS
+    MS ->> DB: Mesa.findByPk(id)
+    DB -->> MS: Mesa encontrada o null
+    
+    alt Mesa no encontrada
+        MS -->> MC: Error("Mesa no encontrada")
+        MC -->> C: 404 {error}
+        deactivate MS
+        deactivate MC
+    else Mesa encontrada
+        MS ->> DB: Pedido.findAll({<br/>  where: {mesa: id, estado: 'pendiente'}<br/>})
+        DB -->> MS: pedidosPendientes
         
-        PS ->> DB: Mesa.findByPk(mesaId)
-        DB -->> PS: Mesa encontrada o null
+        MS ->> MS: totalCierre = mesa.totalActual
         
-        alt Mesa no encontrada
-            PS -->> PC: Error("Mesa no encontrada")
-            PC -->> C: 500 {error}
-            deactivate PS
-            deactivate PC
-        else Mesa encontrada
-            PS ->> DB: Pedido.findAll({<br/>  where: {mesa: mesaId, estado: 'pendiente'}<br/>})
-            DB -->> PS: pedidosPendientes
-            
-            PS ->> PS: totalCierre = mesa.totalActual
-            
-            PS ->> DB: Pedido.update({<br/>  estado: 'pagado'<br/>}, {<br/>  where: {<br/>    mesa: mesaId,<br/>    estado: {[Op.or]: [<br/>      'pendiente',<br/>      'en_preparacion',<br/>      'entregado'<br/>    ]}<br/>  }<br/>})
-            DB -->> PS: Pedidos actualizados
-            
-            PS ->> DB: mesa.estado = 'libre'<br/>mesa.totalActual = 0<br/>mesa.mozoAsignado = null<br/>mesa.save()
-            DB -->> PS: Mesa liberada
-            
-            PS -->> PC: {mesaId, totalCobrado, pedidosCerrados}
-            PC -->> C: 200 {mensaje, mesaId, totalCobrado, pedidosCerrados}
-            deactivate PS
-            deactivate PC
-        end
+        MS ->> DB: Pedido.update({<br/>  estado: 'pagado'<br/>}, {<br/>  where: {<br/>    mesa: id,<br/>    estado: {[Op.or]: [<br/>      'pendiente',<br/>      'en_preparacion',<br/>      'entregado'<br/>    ]}<br/>  }<br/>})
+        DB -->> MS: Pedidos actualizados
+        
+        MS ->> DB: mesa.estado = 'libre'<br/>mesa.totalActual = 0<br/>mesa.mozoAsignado = null<br/>mesa.save()
+        DB -->> MS: Mesa liberada
+        
+        MS -->> MC: {mesaId: id, totalCobrado, pedidosCerrados}
+        MC -->> C: 200 {mensaje, mesaId, totalCobrado, pedidosCerrados}
+        deactivate MS
+        deactivate MC
     end
 ```
 
@@ -520,11 +577,10 @@ sequenceDiagram
 **Notas:**
 - Actualiza pedidos en estados: pendiente, en_preparacion, entregado
 - Guarda el total antes de liberar la mesa
-- Este endpoint es diferente de `/api/mesas/:id/cerrar` (más completo)
 
 ---
 
-### 9. Eliminar Pedido (DELETE /api/pedidos/:id)
+### 10. Eliminar Pedido (DELETE /api/pedidos/:id)
 
 ```mermaid
 sequenceDiagram
@@ -1047,25 +1103,25 @@ sequenceDiagram
     participant MP as MesaProvider
     participant MR as MesaRepositoryImpl
     participant MD as MesaDataSource
-    participant BR as pedidoRoutes.js<br/>POST /cerrar-mesa
+    participant BR as mesaRoutes.js<br/>POST /mesas/:id/cerrar
     participant AM as authMiddleware
-    participant PC as pedidoController.js
-    participant PS as pedidoService.js
+    participant PC as mesaController.js
+    participant PS as mesaService.js
     participant DB as MySQL (Mesa + Pedido)
 
     Note over U,MD: FRONTEND
     U ->> MM: Pulsa "CERRAR MESA Y COBRAR"
     MM ->> MM: Muestra diálogo confirmación
     U ->> MM: Confirma cierre
-    MM ->> MP: cerrarMesaYFacturar(mesaId)
+    MM ->> MP: cerrarMesa(mesaId)
     activate MP
-    MP ->> MR: cerrarMesaYFacturar(mesaId)
+    MP ->> MR: cerrarMesa(mesaId)
     activate MR
-    MR ->> MD: cerrarMesaYFacturar(mesaId)
+    MR ->> MD: cerrarMesa(mesaId)
     activate MD
     
     MD ->> MD: Obtiene token
-    MD ->> BR: POST /api/pedidos/cerrar-mesa<br/>Authorization: Bearer {token}<br/>{mesaId}
+    MD ->> BR: POST /api/mesas/{id}/cerrar<br/>Authorization: Bearer {token}
     deactivate MD
     deactivate MR
     deactivate MP
@@ -1075,14 +1131,14 @@ sequenceDiagram
     AM ->> PC: cerrarMesa(req, res)
     activate PC
     
-    PC ->> PC: Extrae mesaId del body
-    PC ->> PS: cerrarMesa(mesaId)
+    PC ->> PC: Extrae id de params
+    PC ->> PS: cerrarMesa(id)
     activate PS
     
-    PS ->> DB: Mesa.findByPk(mesaId)
+    PS ->> DB: Mesa.findByPk(id)
     DB -->> PS: Mesa
     
-    PS ->> DB: Pedido.findAll({where: {mesa, estado: 'pendiente'}})
+    PS ->> DB: Pedido.findAll({where: {mesa: id, estado: 'pendiente'}})
     DB -->> PS: pedidosPendientes
     
     PS ->> PS: totalCierre = mesa.totalActual
@@ -1093,7 +1149,7 @@ sequenceDiagram
     PS ->> DB: mesa.estado = 'libre'<br/>mesa.totalActual = 0<br/>mesa.save()
     DB -->> PS: Mesa liberada
     
-    PS -->> PC: {mesaId, totalCobrado, pedidosCerrados}
+    PS -->> PC: {mesaId: id, totalCobrado, pedidosCerrados}
     PC -->> MD: 200 {mensaje, mesaId, totalCobrado, pedidosCerrados}
     deactivate PS
     deactivate PC
@@ -1110,7 +1166,7 @@ sequenceDiagram
 
 **Flujo Completo:**
 1. **Frontend**: Usuario confirma cierre → Provider llama método
-2. **HTTP**: POST `/api/pedidos/cerrar-mesa` con mesaId
+2. **HTTP**: POST `/api/mesas/:id/cerrar` con token
 3. **Backend**: Valida token → Controller → Service busca mesa y pedidos
 4. **Backend**: Service calcula total → Actualiza pedidos a 'pagado' → Libera mesa
 5. **HTTP**: Backend responde 200 con totalCobrado

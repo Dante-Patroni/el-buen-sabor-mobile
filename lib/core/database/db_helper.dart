@@ -49,23 +49,22 @@ class DBHelper {
   /// Nullable porque se inicializa de forma lazy (cuando se necesita)
   static Database? _database;
 
-  /// Constructor privado (el _ lo hace privado)
-  /// Esto previene que se creen instancias con `DBHelper()`
-  /// Solo se puede acceder mediante `DBHelper.instance`
+  /**
+   * @description Constructor privado para inicializar el singleton de DBHelper.
+   * @returns {DBHelper} Instancia creada internamente.
+   * @throws {Error} No lanza errores por diseno.
+   */
   DBHelper._init();
 
   // ============================================================================
   // 📂 GETTER DE BASE DE DATOS - Lazy Initialization
   // ============================================================================
 
-  /// Obtiene la instancia de la base de datos
-  ///
-  /// PATRÓN: Lazy Initialization
-  /// - La base de datos solo se crea cuando se necesita por primera vez
-  /// - Si ya existe, se reutiliza la instancia existente
-  ///
-  /// RETORNA: `Future<Database>` - Promesa de la base de datos
-  /// El Future permite operaciones asíncronas (no bloquea la UI)
+  /**
+   * @description Obtiene la instancia SQLite con inicializacion lazy.
+   * @returns {Future<Database>} Instancia de base de datos.
+   * @throws {Exception} Error al abrir o crear la base de datos.
+   */
   Future<Database> get database async {
     // Si ya existe la base de datos, retornarla
     if (_database != null) return _database!;
@@ -82,17 +81,12 @@ class DBHelper {
   // 🏗️ INICIALIZACIÓN DE BASE DE DATOS
   // ============================================================================
 
-  /// Inicializa la base de datos SQLite
-  ///
-  /// PASOS:
-  /// 1. Obtiene la ruta del directorio de bases de datos del sistema
-  /// 2. Combina la ruta con el nombre del archivo
-  /// 3. Abre/crea la base de datos con openDatabase()
-  ///
-  /// PARÁMETROS:
-  /// - filePath: Nombre del archivo de base de datos (ej: 'el_buen_sabor_v6.db')
-  ///
-  /// RETORNA: `Future<Database>` - Instancia de la base de datos
+  /**
+   * @description Inicializa y abre la base de datos SQLite.
+   * @param {String} filePath - Nombre del archivo de base de datos.
+   * @returns {Future<Database>} Instancia abierta o creada.
+   * @throws {Exception} Error al abrir la base de datos.
+   */
   Future<Database> _initDB(String filePath) async {
     // Obtiene la ruta del directorio de bases de datos del dispositivo
     // En Android: /data/data/<package>/databases/
@@ -114,20 +108,13 @@ class DBHelper {
   // 📋 CREACIÓN DEL ESQUEMA - Tablas y Estructura
   // ============================================================================
 
-  /// Crea el esquema de la base de datos (tablas y columnas)
-  ///
-  /// Este método se ejecuta SOLO la primera vez que se crea la base de datos.
-  /// Define la estructura de todas las tablas.
-  ///
-  /// PARÁMETROS:
-  /// - db: Instancia de la base de datos
-  /// - version: Número de versión (útil para migraciones)
-  ///
-  /// 💡 BUENAS PRÁCTICAS:
-  /// - Usar tipos de datos apropiados (INTEGER, TEXT, REAL)
-  /// - Definir PRIMARY KEY para identificadores únicos
-  /// - Usar NOT NULL para campos obligatorios
-  /// - Establecer valores DEFAULT cuando sea apropiado
+  /**
+   * @description Crea el esquema inicial de la base de datos.
+   * @param {Database} db - Instancia de SQLite.
+   * @param {int} version - Version del esquema.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error al crear tablas o seed data.
+   */
   Future _createDB(Database db, int version) async {
     // -------------------------------------------------------------------------
     // 📦 TABLA: pedidos

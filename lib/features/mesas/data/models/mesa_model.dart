@@ -1,6 +1,17 @@
 import '../../domain/models/mesa.dart';
 
 class MesaModel extends Mesa {
+  /**
+   * @description Crea un modelo de mesa desde sus propiedades.
+   * @param {int} id - Identificador de la mesa.
+   * @param {String} nombre - Nombre visible.
+   * @param {String} estado - Estado actual.
+   * @param {double} totalActual - Total acumulado.
+   * @param {int} itemsPendientes - Cantidad de items pendientes.
+   * @param {String?} mozoAsignado - Nombre del mozo asignado.
+   * @returns {MesaModel} Instancia creada.
+   * @throws {Error} No lanza errores por diseno.
+   */
   MesaModel({
     required super.id,
     required super.nombre,
@@ -10,6 +21,12 @@ class MesaModel extends Mesa {
     super.mozoAsignado, // 👈 Pasamos el dato al padre
   });
 
+  /**
+   * @description Construye un MesaModel desde JSON del backend.
+   * @param {Map<String, dynamic>} json - Datos crudos del backend.
+   * @returns {MesaModel} Modelo de mesa parseado.
+   * @throws {Error} No lanza errores; usa defaults si faltan campos.
+   */
   factory MesaModel.fromJson(Map<String, dynamic> json) {
     final mozoNombre = json['mozo_nombre'] ??
         ((json['mozo'] is Map<String, dynamic>)

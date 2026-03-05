@@ -15,6 +15,11 @@ class MesaDataSource {
   final StorageService _storage = StorageService();
 
   // 🔐 HELPER: Obtener Headers con Token
+  /**
+   * @description Construye headers HTTP con token JWT.
+   * @returns {Future<Map<String, String>>} Headers con Authorization.
+   * @throws {Exception} Sesion expirada o token ausente.
+   */
   Future<Map<String, String>> _getAuthHeaders() async {
     final token = await _storage.getToken();
     if (token == null || token.isEmpty) {
@@ -27,12 +32,25 @@ class MesaDataSource {
     };
   }
 
+  /**
+   * @description Lanza error si la respuesta es 401/403.
+   * @param {http.Response} response - Respuesta HTTP.
+   * @returns {void} No retorna valor.
+   * @throws {Exception} Sesion expirada.
+   */
   void _throwIfUnauthorized(http.Response response) {
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw Exception(_sessionExpiredMessage);
     }
   }
 
+  /**
+   * @description Extrae un mensaje de error desde el body del backend.
+   * @param {String} body - Cuerpo de la respuesta HTTP.
+   * @param {String} fallback - Mensaje por defecto si no hay mensaje.
+   * @returns {String} Mensaje de error.
+   * @throws {Error} No lanza errores; devuelve fallback si falla el parseo.
+   */
   String _extractBackendMessage(String body, {String fallback = 'Error de servidor'}) {
     try {
       final decoded = jsonDecode(body);
@@ -49,6 +67,11 @@ class MesaDataSource {
   }
 
   // 1. GET MESAS (Ahora blindado)
+  /**
+   * @description Obtiene el listado de mesas desde el backend.
+   * @returns {Future<List<MesaModel>>} Lista de mesas.
+   * @throws {Exception} Error de red, backend o sesion.
+   */
   Future<List<MesaModel>> getMesasFromApi() async {
     try {
       final url = Uri.parse(baseUrl);
@@ -71,6 +94,12 @@ class MesaDataSource {
   }
 
   // 2. CERRAR MESA (FACTURACIÓN BACKEND)
+  /**
+   * @description Cierra una mesa y retorna el total cobrado.
+   * @param {int} idMesa - Identificador de la mesa.
+   * @returns {Future<double>} Total cobrado.
+   * @throws {Exception} Error de red, backend o sesion.
+   */
   Future<double> cerrarMesa(int idMesa) async {
     try {
       final headers = await _getAuthHeaders();
@@ -101,6 +130,12 @@ class MesaDataSource {
     }
   }
 
+  /**
+   * @description Parsea el total cobrado desde una respuesta JSON.
+   * @param {String} body - Cuerpo de la respuesta HTTP.
+   * @returns {double} Total cobrado o 0.0 si no se puede parsear.
+   * @throws {Error} No lanza errores; retorna 0.0 si falla.
+   */
   double _parseTotalCobrado(String body) {
     if (body.trim().isEmpty) {
       return 0.0;
@@ -136,6 +171,13 @@ class MesaDataSource {
 
 
   // 3. ABRIR / OCUPAR MESA
+  /**
+   * @description Abre u ocupa una mesa asignando un mozo.
+   * @param {int} idMesa - Identificador de la mesa.
+   * @param {int} idMozo - Identificador del mozo.
+   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+   * @throws {Exception} Error de red, backend o sesion.
+   */
   Future<void> abrirMesa(int idMesa, int idMozo) async {
     final url = Uri.parse('$baseUrl/$idMesa/abrir');
     debugPrint("🌐 ABRIENDO MESA: $url");
