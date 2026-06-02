@@ -102,26 +102,32 @@ class MesaProvider extends ChangeNotifier {
   }
 
   // =========================
-  // Caso de uso: cerrar mesa
-  // =========================
-  /**
-   * @description Cierra una mesa y recarga el listado.
-   * @param {int} idMesa - Identificador de la mesa.
-   * @returns {Future<double?>} Total cobrado o null si falla.
-   * @throws {Exception} Error de red o backend.
-   */
- Future<double?> cerrarMesa(int idMesa) async {
+// Caso de uso: solicitar cobro
+// =========================
+/**
+ * @description Solicita a caja el cobro de una mesa y recarga el listado.
+ * @param {int} idMesa - Identificador de la mesa.
+ * @returns {Future<bool>} true si la solicitud fue exitosa.
+ * @throws {Exception} Error de red o backend.
+ */
+Future<bool> solicitarCobro(int idMesa) async {
   _isLoading = true;
   _error = '';
   notifyListeners();
 
   try {
-    final total = await _repository.cerrarMesa(idMesa);
+    await _repository.solicitarCobro(idMesa);
+
     await cargarMesas();
-    return total;
+
+    return true;
   } catch (e) {
-    _error = _normalizarError(e, fallback: 'Error al cerrar mesa');
-    return null;
+    _error = _normalizarError(
+      e,
+      fallback: 'Error al solicitar cobro',
+    );
+
+    return false;
   } finally {
     _isLoading = false;
     notifyListeners();

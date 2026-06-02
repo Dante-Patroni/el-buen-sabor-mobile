@@ -23,5 +23,5 @@ abstract class MesaRepository {
    * @returns {Future<double>} Total cobrado.
    * @throws {Exception} Error de red o backend.
    */
-  Future<double> cerrarMesa(int idMesa);
+  Future<void> solicitarCobro(int idMesa);
 }

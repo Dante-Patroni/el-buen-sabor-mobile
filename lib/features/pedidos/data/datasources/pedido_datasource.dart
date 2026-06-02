@@ -251,14 +251,18 @@ class PedidoDataSource {
    */
   Future<List<PedidoModel>> getPedidosPorMesa(String mesa) async {
     try {
+      final url = Uri.parse('$_baseUrl/pedidos/mesa/$mesa');
+      
       final response = await http.get(
-        Uri.parse('$_baseUrl/pedidos/mesa/$mesa'),
+        url,
         headers: await _getAuthHeaders(),
-      ); 
+      ).timeout(const Duration(seconds: 10));
+      
       _throwIfUnauthorized(response);
 
       if (response.statusCode == 200) {
-        return _parsePedidosFromResponseBody(response.body);
+        final pedidos = _parsePedidosFromResponseBody(response.body);
+        return pedidos;
       }
 
       throw Exception(
@@ -474,35 +478,56 @@ class PedidoDataSource {
    * @throws {Error} No lanza errores por diseno.
    */
   List<PedidoModel> _parsePedidosFromResponseBody(String body) {
-    final decoded = jsonDecode(body);
-    final List<dynamic> jsonList = decoded is Map<String, dynamic>
-        ? (decoded['data'] as List<dynamic>? ?? [])
-        : (decoded as List<dynamic>? ?? []);
-    final List<PedidoModel> listaAplanada = [];
+    try {
+      final decoded = jsonDecode(body);
+      
+      final List<dynamic> jsonList = decoded is Map<String, dynamic>
+          ? (decoded['data'] as List<dynamic>? ?? [])
+          : (decoded as List<dynamic>? ?? []);
+      
+      final List<PedidoModel> listaAplanada = [];
 
-    for (var jsonPedido in jsonList) {
-      final detallesRaw = jsonPedido['DetallePedidos'] ?? jsonPedido['detallePedidos'];
-      if (detallesRaw == null) continue;
+      for (var jsonPedido in jsonList) {
+        // El backend envía "mesaId", no "mesa"
+        final mesaValue = jsonPedido['mesaId'] ?? 
+                         jsonPedido['mesa'] ?? 
+                         jsonPedido['mesa_id'];
+        
+        // El backend envía "detalles", no "DetallePedidos"
+        final detallesRaw = jsonPedido['detalles'] ?? 
+                           jsonPedido['DetallePedidos'] ?? 
+                           jsonPedido['detallePedidos'];
+        
+        if (detallesRaw == null) continue;
 
-      final detalles = detallesRaw as List;
-      for (var detalle in detalles) {
-        listaAplanada.add(
-          PedidoModel(
-            id: jsonPedido['id'],
-            mesa: jsonPedido['mesa']?.toString() ?? '',
-            cliente: jsonPedido['cliente']?.toString() ?? 'Anónimo',
-            estado: _mapEstado(jsonPedido['estado']),
-            fecha: jsonPedido['createdAt'] != null
-                ? DateTime.parse(jsonPedido['createdAt'])
-                : null,
-            platoId: detalle['PlatoId'] ?? detalle['platoId'] ?? 0,
-            cantidad: detalle['cantidad'] ?? 1,
-            total: double.tryParse(detalle['subtotal'].toString()) ?? 0.0,
-            aclaracion: detalle['aclaracion']?.toString() ?? '',
-          ),
-        );
+        final detalles = detallesRaw as List;
+        
+        for (var detalle in detalles) {
+          // Backend envía "plato_id" o "platoId"
+          final platoId = detalle['platoId'] ?? detalle['plato_id'] ?? 0;
+          
+          listaAplanada.add(
+            PedidoModel(
+              id: jsonPedido['id'],
+              mesa: mesaValue?.toString() ?? '',
+              cliente: jsonPedido['cliente']?.toString() ?? 'Anónimo',
+              estado: _mapEstado(jsonPedido['estado']),
+              fecha: jsonPedido['createdAt'] != null
+                  ? DateTime.parse(jsonPedido['createdAt'])
+                  : null,
+              platoId: platoId,
+              cantidad: detalle['cantidad'] ?? 1,
+              total: double.tryParse(detalle['subtotal'].toString()) ?? 0.0,
+              aclaracion: detalle['aclaracion']?.toString() ?? '',
+            ),
+          );
+        }
       }
+      
+      return listaAplanada;
+    } catch (e) {
+      debugPrint('❌ [Parser] Error parseando pedidos: $e');
+      rethrow;
     }
-    return listaAplanada;
   }
 }

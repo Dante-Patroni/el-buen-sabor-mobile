@@ -38,9 +38,9 @@ class MesaModel extends Mesa {
       estado: json['estado'] ?? 'libre',
       totalActual: double.tryParse(json['totalActual'].toString()) ?? 0.0,
       itemsPendientes: int.tryParse(json['itemsPendientes'].toString()) ?? 0,
-      mozoAsignado: (json['estado'] == 'ocupada')
-          ? mozoNombre?.toString()
-          : null,
+      mozoAsignado: (json['estado'] != 'libre')
+    ? mozoNombre?.toString()
+    : null,
     );
   }
 }

@@ -188,27 +188,4 @@ class DBHelper {
     ''');
   }
 
-  // ============================================================================
-  // 🔮 MÉTODOS FUTUROS (ejemplos de operaciones CRUD)
-  // ============================================================================
-
-  // Future<List<Map<String, dynamic>>> getPedidos() async {
-  //   final db = await database;
-  //   return await db.query('pedidos');
-  // }
-  //
-  // Future<int> insertPedido(Map<String, dynamic> pedido) async {
-  //   final db = await database;
-  //   return await db.insert('pedidos', pedido);
-  // }
-  //
-  // Future<int> updatePedido(int id, Map<String, dynamic> pedido) async {
-  //   final db = await database;
-  //   return await db.update('pedidos', pedido, where: 'id = ?', whereArgs: [id]);
-  // }
-  //
-  // Future<int> deletePedido(int id) async {
-  //   final db = await database;
-  //   return await db.delete('pedidos', where: 'id = ?', whereArgs: [id]);
-  // }
 }

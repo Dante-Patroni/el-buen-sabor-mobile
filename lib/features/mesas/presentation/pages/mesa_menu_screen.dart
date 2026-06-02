@@ -20,18 +20,16 @@ import '../providers/mesa_provider.dart';
 /// - Eliminar pedidos completos
 ///
 /// **Arquitectura:** Sigue el patrón MVVM con Provider para la gestión de estado.
-
 class MesaMenuScreen extends StatefulWidget {
   final MesaUiModel mesa;
-
   const MesaMenuScreen({super.key, required this.mesa});
 
   @override
   /**
-   * @description Crea el estado de la pantalla de menu de mesa.
-   * @returns {State<MesaMenuScreen>} Estado de la pantalla.
-   * @throws {Error} No lanza errores por diseno.
-   */
+  * @description Crea el estado de la pantalla de menu de mesa.
+  * @returns {State<MesaMenuScreen>} Estado de la pantalla.
+  * @throws {Error} No lanza errores por diseno.
+  */
   State<MesaMenuScreen> createState() => _MesaMenuScreenState();
 }
 
@@ -39,24 +37,22 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   // ===========================================================================
   // 1. VARIABLES DE ESTADO
   // ===========================================================================
-  late MesaUiModel _mesaActual;
+  // No necesitamos _mesaActual como un StatefulWidget, lo leeremos del Provider
   bool _isLoading = false;
 
-// ===========================================================================
+  // ===========================================================================
   // 2. MÉTODOS DEL CICLO DE VIDA
   // ===========================================================================
   @override
-//initState para cargar datos iniciales
+  //initState para cargar datos iniciales
   /**
-   * @description Inicializa el estado y refresca datos luego del primer frame.
-   * @returns {void} No retorna valor.
-   * @throws {Error} No lanza errores por diseno.
-   */
+  * @description Inicializa el estado y refresca datos luego del primer frame.
+  * @returns {void} No retorna valor.
+  * @throws {Error} No lanza errores por diseno.
+  */
   void initState() {
     super.initState();
-    _mesaActual = widget.mesa;
-
-// Cargar datos de la mesa después de que el widget se haya renderizado
+    // Cargar datos de la mesa después de que el widget se haya renderizado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refrescarDatosMesa();
     });
@@ -65,17 +61,24 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   // ===========================================================================
   // 3. WIDGET BUILD - INTERFAZ PRINCIPAL
   // ===========================================================================
- @override
+  @override
   /**
-   * @description Construye la UI principal del menu de la mesa.
-   * @param {BuildContext} context - Contexto de widgets.
-   * @returns {Widget} Arbol de widgets.
-   * @throws {Error} No lanza errores por diseno.
-   */
+  * @description Construye la UI principal del menu de la mesa.
+  * @param {BuildContext} context - Contexto de widgets.
+  * @returns {Widget} Arbol de widgets.
+  * @throws {Error} No lanza errores por diseno.
+  */
   Widget build(BuildContext context) {
+    // 💡 LEER LA MESA MÁS RECIENTE DEL PROVIDER AQUÍ
+    final mesaProvider = Provider.of<MesaProvider>(context);
+    final currentMesa = mesaProvider.mesas.firstWhere(
+      (m) => m.id == widget.mesa.id,
+      orElse: () => widget.mesa, // Usa la mesa original si no se encuentra (debería existir)
+    );
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("Mesa ${_mesaActual.numero}"),
+        title: Text("Mesa ${currentMesa.numero}"), // Usar currentMesa
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
         actions: [
@@ -116,13 +119,13 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                               TextStyle(fontSize: 16, color: Colors.grey[600]),
                         ),
                         // Usar Consumer para reactividad: actualiza cuando cambia el total
+                        // Este ya estaba bien
                         Consumer<MesaProvider>(
                           builder: (_, mesaProvider, __) {
                             final mesa = mesaProvider.mesas.firstWhere(
                               (m) => m.id == widget.mesa.id,
                               orElse: () => widget.mesa,
                             );
-
                             return Text(
                               "\$${mesa.totalActual.toStringAsFixed(0)}",
                               style: const TextStyle(
@@ -133,22 +136,22 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                           },
                         ),
                         const SizedBox(height: 5),
-                        Text("Mozo: ${_mesaActual.mozoAsignado ?? 'Sin mozo'}"),
+                        Text("Mozo: ${currentMesa.mozoAsignado ?? 'Sin mozo'}"), // Usar currentMesa
+                        Text("Estado: ${currentMesa.estado}"), // <--- ¡AÑADE ESTO PARA VER EL ESTADO!
                         if (_isLoading)
                           const Padding(
                             padding: EdgeInsets.only(top: 10),
                             child: SizedBox(
-                                height: 15,
-                                width: 15,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2)),
+                              height: 15,
+                              width: 15,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2)),
                           )
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 30),
-
                 // ------------------------------------------------
                 // BOTÓN: HACER NUEVO PEDIDO
                 // ------------------------------------------------
@@ -158,35 +161,32 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
-                    final pedidoProvider =
-                        Provider.of<PedidoProvider>(context, listen: false);
-
-                    // Inicializar estado para nuevo pedido
-                    pedidoProvider.iniciarPedido(_mesaActual.numero.toString());
-
-                    pedidoProvider.setCliente("Mesa ${_mesaActual.numero}");
-
-                    // Navegar a la pantalla de menú
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MenuModernoPage(
-                            idMesa: _mesaActual.id,
-                            numeroMesa: _mesaActual.numero.toString()),
-                      ),
-                    ).then((_) {
-                      // Al regresar, refrescar datos para mostrar total actualizado
-                      _refrescarDatosMesa();
-                    });
-                  },
+                  onPressed: currentMesa.estado == 'libre' // Solo permitir pedidos si no está libre o esperando cobro
+                    ? null
+                    : () {
+                      final pedidoProvider =
+                          Provider.of<PedidoProvider>(context, listen: false);
+                      // Inicializar estado para nuevo pedido
+                      pedidoProvider.iniciarPedido(currentMesa.numero.toString()); // Usar currentMesa
+                      pedidoProvider.setCliente("Mesa ${currentMesa.numero}"); // Usar currentMesa
+                      // Navegar a la pantalla de menú
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MenuModernoPage(
+                              idMesa: currentMesa.id, // Usar currentMesa
+                              numeroMesa: currentMesa.numero.toString()), // Usar currentMesa
+                        ),
+                      ).then((_) {
+                        // Al regresar, refrescar datos para mostrar total actualizado
+                        _refrescarDatosMesa();
+                      });
+                    },
                   icon: const Icon(Icons.restaurant_menu),
                   label: const Text("HACER PEDIDO / VER CARTA",
                       style: TextStyle(fontSize: 18)),
                 ),
-
                 const SizedBox(height: 20),
-
                 // ------------------------------------------------
                 // BOTÓN: VER PEDIDO EN CURSO
                 // ------------------------------------------------
@@ -196,24 +196,24 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                     backgroundColor: Colors.teal.shade600,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VerPedidoMesaScreen(
-                          mesaId: _mesaActual.id,
-                          mesaNumero: _mesaActual.numero,
+                  onPressed: currentMesa.estado == 'libre' // Solo ver pedido si no está libre
+                    ? null
+                    : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VerPedidoMesaScreen(
+                            mesaId: currentMesa.id, // Usar currentMesa
+                            mesaNumero: currentMesa.numero, // Usar currentMesa
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
                   icon: const Icon(Icons.visibility),
                   label: const Text("VER PEDIDO EN CURSO",
                       style: TextStyle(fontSize: 18)),
                 ),
-
                 const SizedBox(height: 20),
-
                 // ------------------------------------------------
                 // BOTÓN: MODIFICAR PEDIDO EXISTENTE
                 // ------------------------------------------------
@@ -223,24 +223,24 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                     backgroundColor: Colors.orange.shade600,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VerPedidoMesaScreen(
-                          mesaId: _mesaActual.id,
-                          mesaNumero: _mesaActual.numero,
+                  onPressed: currentMesa.estado == 'libre' // Solo modificar si no está libre
+                    ? null
+                    : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VerPedidoMesaScreen(
+                            mesaId: currentMesa.id, // Usar currentMesa
+                            mesaNumero: currentMesa.numero, // Usar currentMesa
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
                   icon: const Icon(Icons.edit),
                   label: const Text("MODIFICAR PEDIDO",
                       style: TextStyle(fontSize: 18)),
                 ),
-
                 const SizedBox(height: 20),
-
                 // ------------------------------------------------
                 // BOTÓN: ELIMINAR PEDIDO COMPLETO
                 // ------------------------------------------------
@@ -250,31 +250,33 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                     backgroundColor: Colors.red.shade500,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () async {
-                    await _mostrarDialogoEliminarPedidoCompleto(context);
-                  },
+                  onPressed: currentMesa.estado == 'libre' // Solo eliminar si no está libre
+                    ? null
+                    : () async {
+                      await _mostrarDialogoEliminarPedidoCompleto(context, currentMesa.numero.toString()); // Pasar numeroMesa
+                    },
                   icon: const Icon(Icons.delete),
                   label: const Text("ELIMINAR PEDIDO",
                       style: TextStyle(fontSize: 18)),
                 ),
-
                 const SizedBox(height: 20),
-
                 // ------------------------------------------------
                 // BOTÓN: CERRAR MESA Y COBRAR
                 // ------------------------------------------------
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    backgroundColor: Colors.red.shade700,
+                    backgroundColor: currentMesa.estado == 'esperando_cobro' ? Colors.green : Colors.red.shade700, // Cambiar color si ya solicitó cobro
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
-                    _cerrarMesaBackend(context);
-                  },
+                  onPressed: currentMesa.estado == 'esperando_cobro'
+                    ? null // Deshabilitar si ya está esperando cobro
+                    : () {
+                      _solicitarCobro(context, currentMesa.numero.toString()); // Pasar numeroMesa
+                    },
                   icon: const Icon(Icons.point_of_sale),
-                  label: const Text("CERRAR MESA Y COBRAR",
-                      style: TextStyle(fontSize: 18)),
+                  label: Text(currentMesa.estado == 'esperando_cobro' ? "COBRO SOLICITADO" : "SOLICITAR COBRO", // Cambiar texto
+                      style: const TextStyle(fontSize: 18)),
                 ),
               ],
             ),
@@ -283,7 +285,7 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
       ),
     );
   }
-  
+
   // ===========================================================================
   // 4. MÉTODOS PRINCIPALES (MISMO CÓDIGO, MEJOR ORGANIZACIÓN)
   // ===========================================================================
@@ -294,18 +296,20 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// 2. Cuando el usuario hace pull-to-refresh
   /// 3. Después de ciertas operaciones como crear pedidos
   /**
-   * @description Refresca los datos de la mesa desde el backend.
-   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
-   * @throws {Exception} Error de red o backend.
-   */
+  * @description Refresca los datos de la mesa desde el backend.
+  * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+  * @throws {Exception} Error de red o backend.
+  */
   Future<void> _refrescarDatosMesa() async {
     // Verificar que el widget aún esté montado antes de actualizar el estado
     if (!mounted) return;
     setState(() => _isLoading = true);
-
     try {
       // Actualizar la lista de mesas desde el proveedor
       await context.read<MesaProvider>().cargarMesas();
+      // 💡 NO ES NECESARIO ACTUALIZAR _mesaActual AQUÍ DIRECTAMENTE
+      // porque estamos usando un Consumer/Provider.of en el build
+      // que leerá la mesa actualizada del MesaProvider.
     } catch (e) {
       debugPrint("Error refrescando mesa: $e");
     } finally {
@@ -321,17 +325,15 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// 1. Elimina el token de autenticación del almacenamiento local
   /// 2. Navega a LoginPage y limpia el historial de navegación
   /**
-   * @description Cierra sesion y redirige a login.
-   * @param {BuildContext} context - Contexto de widgets.
-   * @returns {void} No retorna valor.
-   * @throws {Exception} Error al cerrar sesion.
-   */
+  * @description Cierra sesion y redirige a login.
+  * @param {BuildContext} context - Contexto de widgets.
+  * @returns {void} No retorna valor.
+  * @throws {Exception} Error al cerrar sesion.
+  */
   void _logout(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     await authProvider.logout();
-
     if (!context.mounted) return;
-
     // 2. Volver al Login y borrar historial
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -339,53 +341,53 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
     );
   }
 
+  /// Solicita el cierre de la mesa y el cobro a caja.
   // ---------------------------------------------------------
-  // 🟢 LÓGICA DE CIERRE DE MESA Y FACTURAR
+  // 🟢 LÓGICA DE SOLICITUD DE COBRO
   // ---------------------------------------------------------
-
-  /// Cierra la mesa actual y genera la factura correspondiente.
+  /// Solicita el cobro de la mesa actual.
   ///
-  /// **Flujo completo:**
-  /// 1. Confirmación del usuario mediante diálogo
-  /// 2. Procesamiento del cierre a través del Provider
-  /// 3. Simulación de generación de factura
-  /// 4. Actualización de estados en la aplicación
-  /// 5. Navegación de regreso al salón principal
+  /// Flujo:
+  /// 1. Confirmación del usuario
+  /// 2. Envío de solicitud a caja
+  /// 3. Actualización de estado
+  /// 4. Notificación visual
   ///
-  /// **Manejo de errores:**
-  /// - Errores de conexión se muestran al usuario
-  /// - Estados null se manejan apropiadamente
-  /// - Verificaciones de mounted previenen crashes
+  /// El cierre definitivo y la facturación son responsabilidad
+  /// exclusiva del módulo Caja.
   /**
-   * @description Cierra la mesa y ejecuta el flujo de facturacion.
-   * @param {BuildContext} context - Contexto de widgets.
-   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
-   * @throws {Exception} Error de red o backend.
-   */
-  Future<void> _cerrarMesaBackend(BuildContext context) async {
+  * @description Solicita a caja el cobro de la mesa.
+  * @param {BuildContext} context - Contexto de widgets.
+  * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+  * @throws {Exception} Error de red o backend.
+  */
+  Future<void> _solicitarCobro(BuildContext context, String numeroMesa) async {
     // ------------------------------------------------
     // 1. DIÁLOGO DE CONFIRMACIÓN
     // ------------------------------------------------
     bool? confirmar = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Confirmar Cierre"),
+        title: const Text("Solicitar Cuenta"),
         content: Text(
-            "¿Desea cerrar la Mesa ${_mesaActual.numero} y cobrar \$${_mesaActual.totalActual.toStringAsFixed(0)}"),
+          "¿Desea solicitar el cobro de la Mesa $numeroMesa?",
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancelar")),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancelar"),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text("CERRAR Y COBRAR"),
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("SOLICITAR"),
           ),
         ],
       ),
     );
-
     if (confirmar != true) return;
 
     // ------------------------------------------------
@@ -396,110 +398,71 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Colors.orange),
+        child: CircularProgressIndicator(
+          color: Colors.orange,
+        ),
       ),
     );
 
     try {
-      // Obtener instancia del proveedor de mesas
-      final mesaProvider = Provider.of<MesaProvider>(context, listen: false);
-
-      // Verificación de seguridad: widget podría estar desmontado
-      if (!context.mounted) return;
-
+      // Obtener instancia del provider
+      final mesaProvider =
+          Provider.of<MesaProvider>(context, listen: false);
       // ------------------------------------------------
-      // 3. PROCESAR CIERRE DE MESA (LÓGICA DE NEGOCIO)
+      // 3. SOLICITAR COBRO A CAJA
       // ------------------------------------------------
-      // Este método internamente llama: Provider → Repository → DataSource → API
-      final totalCobrado =
-          await mesaProvider.cerrarMesa(_mesaActual.id);
-
-      // Verificación de seguridad después de operación async
+      final ok =
+          await mesaProvider.solicitarCobro(widget.mesa.id); // Usar widget.mesa.id
       if (!context.mounted) return;
-
-      // Cerrar el diálogo de carga
+      // Cerrar loading
       Navigator.pop(context);
-
-      // Validar respuesta del servidor
-      if (totalCobrado == null) {
-        _mostrarError(context, "Error al cerrar la mesa. Intente nuevamente.");
+      // Validar respuesta
+      if (!ok) {
+        _mostrarError(
+          context,
+          "No se pudo solicitar el cobro.",
+        );
         return;
       }
-
       // ------------------------------------------------
-      // 4. SIMULACIÓN DE FACTURACIÓN (EXPERIENCIA DE USUARIO)
+      // 4. NOTIFICACIÓN EXITOSA
       // ------------------------------------------------
-
-      // Mostrar diálogo de "Facturando..." con detalles
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              const CircularProgressIndicator(color: Colors.blueAccent),
-              const SizedBox(height: 20),
-              const Text("Generando Factura A...",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 5),
-              const Text("Conectando con AFIP...",
-                  style: TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 15),
-              Text("Monto: \$${totalCobrado.toStringAsFixed(0)}",
-                  style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-      );
-
-      // Simular tiempo de procesamiento para realismo
-      await Future.delayed(const Duration(seconds: 3));
-
-      // Verificación CRÍTICA después de delay
-      if (!context.mounted) return;
-
-      // Cerrar diálogo de facturación
-      Navigator.pop(context);
-
-      // 4. Mostrar cartel de Éxito Final
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Row(
-            children: const [
+            children: [
               Icon(Icons.check_circle, color: Colors.white),
               SizedBox(width: 10),
-              Text("¡Factura enviada por mail!"),
+              Text("Cuenta solicitada en caja"),
             ],
           ),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
         ),
       );
-
       // ------------------------------------------------
-      // 6. ACTUALIZAR ESTADO DE LA APLICACIÓN
+      // 5. ACTUALIZAR ESTADO
       // ------------------------------------------------
       if (context.mounted) {
-        // Refrescar pedidos para remover los pagados
-        Provider.of<PedidoProvider>(context, listen: false).inicializarDatos();
+        await context.read<MesaProvider>().cargarMesas();
+        Provider.of<PedidoProvider>(
+          context,
+          listen: false,
+        ).inicializarDatos();
       }
-
       // ------------------------------------------------
-      // 7. NAVEGAR DE REGRESO CON RESULTADO
+      // 6. VOLVER A LA PANTALLA ANTERIOR
       // ------------------------------------------------
-      Navigator.pop(context, true);
-    } catch (e) {
-      // Manejo de errores inesperados
       if (context.mounted) {
-        Navigator.pop(context); // Cerrar loading si sigue abierto
-        _mostrarError(context, "Error de conexión: $e");
+        Navigator.pop(context); // Esto cerrará MesaMenuScreen y volverá a la lista de mesas
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        _mostrarError(
+          context,
+          "Error de conexión: $e",
+        );
       }
     }
   }
@@ -507,19 +470,18 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   // ===========================================================================
   // 5. MÉTODOS AUXILIARES
   // ===========================================================================
-
   /// Muestra un diálogo de error al usuario.
   ///
   /// **Parámetros:**
   /// - `context`: Contexto de construcción
   /// - `mensaje`: Mensaje de error a mostrar
   /**
-   * @description Muestra un dialogo de error al usuario.
-   * @param {BuildContext} context - Contexto de widgets.
-   * @param {String} mensaje - Mensaje a mostrar.
-   * @returns {void} No retorna valor.
-   * @throws {Error} No lanza errores por diseno.
-   */
+  * @description Muestra un dialogo de error al usuario.
+  * @param {BuildContext} context - Contexto de widgets.
+  * @param {String} mensaje - Mensaje a mostrar.
+  * @returns {void} No retorna valor.
+  * @throws {Error} No lanza errores por diseno.
+  */
   void _mostrarError(BuildContext context, String mensaje) {
     if (!context.mounted) return; // ✅ Safety check también aquí
     showDialog(
@@ -546,22 +508,20 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
   /// - Devuelve el stock correspondiente
   /// - Muestra confirmación al usuario
   /**
-   * @description Muestra dialogo para eliminar el pedido completo de la mesa.
-   * @param {BuildContext} context - Contexto de widgets.
-   * @returns {Future<void>} Operacion asincronica sin valor de retorno.
-   * @throws {Exception} Error al cargar o eliminar pedidos.
-   */
-  Future<void> _mostrarDialogoEliminarPedidoCompleto(BuildContext context) async {
+  * @description Muestra dialogo para eliminar el pedido completo de la mesa.
+  * @param {BuildContext} context - Contexto de widgets.
+  * @returns {Future<void>} Operacion asincronica sin valor de retorno.
+  * @throws {Exception} Error al cargar o eliminar pedidos.
+  */
+  Future<void> _mostrarDialogoEliminarPedidoCompleto(BuildContext context, String numeroMesa) async {
     final provider = Provider.of<PedidoProvider>(context, listen: false);
-    await provider.cargarPedidosDeMesa(_mesaActual.numero.toString());
+    await provider.cargarPedidosDeMesa(numeroMesa); // Usar numeroMesa
     if (!context.mounted) return;
-
     // Filtrar pedidos activos de esta mesa
     final pedidosDeMesa = provider.listaPedidos.where((p) {
-      return p.mesa == _mesaActual.numero.toString() &&
+      return p.mesa == numeroMesa && // Usar numeroMesa
           p.estado != EstadoPedido.pagado;
     }).toList();
-
     // Validar que hay pedidos para eliminar
     if (pedidosDeMesa.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -587,14 +547,12 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-
               // Eliminar cada pedido individualmente
               final idsUnicos = pedidosDeMesa
                   .map((p) => p.id)
                   .whereType<int>()
                   .toSet()
                   .toList();
-
               if (idsUnicos.isEmpty) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -606,7 +564,6 @@ class _MesaMenuScreenState extends State<MesaMenuScreen> {
                 }
                 return;
               }
-
               var huboError = false;
               for (final pedidoId in idsUnicos) {
                 final ok = await provider.borrarPedidoHistorico(pedidoId);

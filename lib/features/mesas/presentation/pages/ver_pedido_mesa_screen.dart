@@ -59,6 +59,34 @@ class _VerPedidoMesaScreenState extends State<VerPedidoMesaScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
+          // Si hay un error, mostrarlo
+          if (provider.errorMessage.isNotEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline,
+                      size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      "Error: ${provider.errorMessage}",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 18, color: Colors.red),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      provider.cargarPedidosDeMesa(widget.mesaNumero.toString());
+                    },
+                    child: const Text("Reintentar"),
+                  ),
+                ],
+              ),
+            );
+          }
+
           final pedidosMesa = provider.listaPedidos.where((p) {
             final esMesa = p.mesa == widget.mesaNumero.toString();
             final noPagado = p.estado != EstadoPedido.pagado;

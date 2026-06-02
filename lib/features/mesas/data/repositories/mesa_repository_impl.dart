@@ -43,7 +43,8 @@ class MesaRepositoryImpl implements MesaRepository {
    * @returns {Future<double>} Total cobrado.
    * @throws {Exception} Error de red o backend.
    */
-  Future<double> cerrarMesa(int idMesa) {
-    return dataSource.cerrarMesa(idMesa);
-  }
+ @override
+Future<void> solicitarCobro(int idMesa) {
+  return dataSource.solicitarCobro(idMesa);
+}
 }

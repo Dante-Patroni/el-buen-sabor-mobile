@@ -49,7 +49,6 @@ class SalonMesasScreen extends StatefulWidget {
 }
 
 class _SalonMesasScreenState extends State<SalonMesasScreen> {
-
   // ==========================================================================
   // 🚀 CICLO DE VIDA
   // ==========================================================================
@@ -93,22 +92,31 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
    * @throws {Exception} Error de navegacion o carga.
    */
   Future<void> _onMesaTap(MesaUiModel mesa) async {
-    if (mesa.estado == 'libre') {
-      _mostrarDialogoAbrir(mesa);
-    } else {
-      // Navegamos al menú de la mesa ocupada
-      // await → esperamos a que el usuario vuelva
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MesaMenuScreen(mesa: mesa),
-        ),
-      );
+    switch (mesa.estado) {
+      case 'libre':
+        _mostrarDialogoAbrir(mesa);
+        return;
 
-      // 🔄 Al volver, sincronizamos estado con el backend
-      if (mounted) {
-        Provider.of<MesaProvider>(context, listen: false).cargarMesas();
-      }
+      case 'ocupada':
+      case 'esperando_cobro':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MesaMenuScreen(mesa: mesa),
+          ),
+        );
+
+        if (mounted) {
+          await Provider.of<MesaProvider>(
+            context,
+            listen: false,
+          ).cargarMesas();
+        }
+        return;
+
+      default:
+        debugPrint("⚠️ Estado de mesa desconocido: ${mesa.estado}");
+        return;
     }
   }
 
@@ -158,7 +166,6 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
               final exito = await mesaProvider.ocuparMesa(mesa.id, idMozo);
 
               if (mounted && exito) {
-
                 // 2️⃣ Creamos un modelo temporal para UX inmediata
                 // El backend sigue siendo la fuente de verdad
                 final mesaActualizada = MesaUiModel(
@@ -243,7 +250,6 @@ class _SalonMesasScreenState extends State<SalonMesasScreen> {
 
       body: Consumer<MesaProvider>(
         builder: (context, mesaProvider, child) {
-
           // 1️⃣ Estado: Cargando
           if (mesaProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -316,12 +322,19 @@ class _MesaCard extends StatelessWidget {
    * @returns {Widget} Arbol de widgets.
    * @throws {Error} No lanza errores por diseno.
    */
+
   Widget build(BuildContext context) {
     final bool esOcupada = mesa.estado == 'ocupada';
-    final Color colorFondo =
-        esOcupada ? Colors.orange.shade800 : Colors.grey.shade300;
+    final bool esperandoCobro = mesa.estado == 'esperando_cobro';
+
+    final Color colorFondo = esOcupada
+        ? Colors.orange.shade800
+        : esperandoCobro
+            ? Colors.green.shade700
+            : Colors.grey.shade300;
+
     final Color colorTexto =
-        esOcupada ? Colors.white : Colors.black87;
+        (esOcupada || esperandoCobro) ? Colors.white : Colors.black87;
 
     return Material(
       color: colorFondo,
@@ -335,8 +348,11 @@ class _MesaCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.table_restaurant_rounded,
-                  size: 40, color: colorTexto),
+              Icon(
+                Icons.table_restaurant_rounded,
+                size: 40,
+                color: colorTexto,
+              ),
               const SizedBox(height: 8),
               Text(
                 "Mesa ${mesa.numero}",
@@ -350,14 +366,39 @@ class _MesaCard extends StatelessWidget {
               if (esOcupada)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     "Mozo: ${mesa.mozoAsignado}",
-                    style: TextStyle(fontSize: 12, color: colorTexto),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorTexto,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else if (esperandoCobro)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    "ESPERANDO COBRO",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: colorTexto,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 )

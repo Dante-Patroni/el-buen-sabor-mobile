@@ -93,42 +93,54 @@ class MesaDataSource {
     }
   }
 
-  // 2. CERRAR MESA (FACTURACIÓN BACKEND)
-  /**
-   * @description Cierra una mesa y retorna el total cobrado.
-   * @param {int} idMesa - Identificador de la mesa.
-   * @returns {Future<double>} Total cobrado.
-   * @throws {Exception} Error de red, backend o sesion.
-   */
-  Future<double> cerrarMesa(int idMesa) async {
-    try {
-      final headers = await _getAuthHeaders();
-      final urlMesas = Uri.parse('$baseUrl/$idMesa/cerrar');
+  // 2. SOLICITAR COBRO (FACTURACIÓN BACKEND)
+ /**
+ * @description Solicita a caja el cierre y cobro de una mesa.
+ * @param {int} idMesa - Identificador de la mesa.
+ * @returns {Future<void>} Confirmación de solicitud.
+ * @throws {Exception} Error de red, backend o sesión.
+ */
+Future<void> solicitarCobro(int idMesa) async {
+  try {
+    final headers = await _getAuthHeaders();
 
-      http.Response response = await http.post(urlMesas, headers: headers);
-      if (response.statusCode == 404) {
-        final urlPedidos = Uri.parse('$pedidosBaseUrl/cerrar-mesa');
-        response = await http.post(
-          urlPedidos,
-          headers: headers,
-          body: jsonEncode({"mesaId": idMesa}),
-        );
-      }
+    final url = Uri.parse(
+      '$baseUrl/$idMesa/solicitar-cobro',
+    );
 
-      _throwIfUnauthorized(response);
+    print('📡 SOLICITANDO COBRO - URL: $url');
+    print('📡 HEADERS: $headers');
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return _parseTotalCobrado(response.body);
-      }
+    final response = await http.post(
+      url,
+      headers: headers,
+    );
 
-      throw Exception(_extractBackendMessage(
-        response.body,
-        fallback: 'Error al cerrar mesa: ${response.statusCode}',
-      ));
-    } catch (e) {
-      throw Exception('No se pudo cerrar la mesa: $e');
+    print('📡 RESPUESTA SOLICITARCOBRO - Status: ${response.statusCode}');
+    print('📡 BODY: ${response.body}');
+
+    _throwIfUnauthorized(response);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300) {
+      print('✅ COBRO SOLICITADO EXITOSAMENTE');
+      return;
     }
+
+    throw Exception(
+      _extractBackendMessage(
+        response.body,
+        fallback:
+            'Error al solicitar cobro: ${response.statusCode}',
+      ),
+    );
+  } catch (e) {
+    print('❌ ERROR EN SOLICITARCOBRO: $e');
+    throw Exception(
+      'No se pudo solicitar el cobro: $e',
+    );
   }
+}
 
   /**
    * @description Parsea el total cobrado desde una respuesta JSON.
